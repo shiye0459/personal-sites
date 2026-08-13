@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>林川 LIN CHUAN — 代码与胶片 · 独立开发者 &amp; 胶片摄影师</title>
+<meta name="description" content="林川（Lin Chuan），住在杭州的独立开发者与胶片摄影师。白天写代码，晚上拍胶片。">
+<style>
+/* ============================================================
+   林川 · 个人网站 —— 3D 视差沉浸式
+   分层结构（由远及近）：
+   1. .stage       固定背景场景：光晕 / 虚化光斑 / 几何装饰，随鼠标多层视差
+   2. main.content 内容层，各区块随滚动以不同速度位移
+   3. .foreground  固定前景小物（虚化），随鼠标快速反向移动，制造摄影式景深
+   4. .vignette / .grain  暗角 + 胶片颗粒
+   交互：JS 鼠标视差（lerp 平滑） + 滚动视差 + 卡片 3D tilt + 胶片计数器
+   ============================================================ */
+
+:root {
+  --bg:        #0b0b10;
+  --ink:       #e9e6df;
+  --ink-dim:   rgba(233, 230, 223, .62);
+  --ink-faint: rgba(233, 230, 223, .36);
+  --amber:     #eaa05e;
+  --amber-soft:rgba(234, 160, 94, .16);
+  --teal:      #79c4b4;
+  --line:      rgba(233, 230, 223, .12);
+  --hole:      #0b0b10;              /* 胶片齿孔「挖空」用的背景色 */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", Consolas, "Courier New", "PingFang SC", monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { background: var(--bg); }
+
+body {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.7;
+  overflow-x: hidden;               /* 巨型标题溢出视口时不出现横向滚动条 */
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(234, 160, 94, .35); }
+
+a { color: inherit; }
+
+/* ---------- 一、固定背景场景：三层 ---------- */
+.stage, .layer, .foreground, .vignette, .grain, .frame-counter {
+  position: fixed;
+  pointer-events: none;             /* 装饰层绝不拦截交互 */
+}
+
+.stage { inset: 0; z-index: 0; }
+
+.layer { inset: 0; will-change: transform; }
+
+/* 最远层：柔和光斑光晕（depth=0，不随鼠标动，作为底光） */
+.layer--glow {
+  background:
+    radial-gradient(46% 38% at 16% 10%, rgba(234, 160, 94, .14), transparent 62%),
+    radial-gradient(42% 46% at 86% 20%, rgba(121, 196, 180, .10), transparent 62%),
+    radial-gradient(58% 52% at 50% 108%, rgba(128, 116, 190, .09), transparent 66%),
+    radial-gradient(30% 30% at 70% 78%, rgba(234, 160, 94, .07), transparent 70%);
+}
+
+/* 次远层：大号虚化光斑（暗房里的失焦灯） */
+.bokeh {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(52px);
+  opacity: .5;
+  animation: drift 24s ease-in-out infinite alternate;
+}
+.bokeh.b1 { width: 420px; height: 420px; left: -8%;  top: 30%; background: radial-gradient(circle at 38% 38%, rgba(234,160,94,.30), transparent 68%); animation-duration: 30s; }
+.bokeh.b2 { width: 300px; height: 300px; right: -5%; top: 6%;  background: radial-gradient(circle at 40% 40%, rgba(121,196,180,.26), transparent 68%); animation-duration: 22s; animation-delay: -8s; }
+.bokeh.b3 { width: 520px; height: 520px; left: 28%;  bottom: -24%; background: radial-gradient(circle at 45% 45%, rgba(128,116,190,.22), transparent 66%); animation-duration: 34s; animation-delay: -14s; }
+.bokeh.b4 { width: 200px; height: 200px; left: 44%;  top: 16%; background: radial-gradient(circle at 40% 40%, rgba(234,160,94,.24), transparent 66%); animation-duration: 18s; animation-delay: -5s; }
+.bokeh.b5 { width: 260px; height: 260px; right: 20%; bottom: 6%; background: radial-gradient(circle at 45% 45%, rgba(121,196,180,.20), transparent 66%); animation-duration: 26s; animation-delay: -11s; }
+.bokeh.b6 { width: 170px; height: 170px; left: 8%;   top: 8%;  background: radial-gradient(circle at 40% 40%, rgba(233,230,223,.16), transparent 66%); animation-duration: 20s; animation-delay: -3s; }
+
+/* 中景层：悬浮的圆环 / 圆点 / 十字，分布在不同深度，部分虚化 */
+.orb { position: absolute; display: block; animation: float 9s ease-in-out infinite alternate; }
+.ring {  border: 1.5px solid var(--line); border-radius: 50%; }
+.dot  {  background: var(--ink-faint); border-radius: 50%; }
+.cross, .plus {
+  background-image:
+    linear-gradient(var(--line), var(--line)),
+    linear-gradient(var(--line), var(--line));
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 1px, 1px 100%;
+}
+.square { border: 1.5px solid var(--line); transform: rotate(45deg); }
+
+.orb.r1 { width: 96px;  height: 96px;  left: 8%;  top: 62%; }
+.orb.r2 { width: 44px;  height: 44px;  right: 10%; top: 34%; animation-duration: 7s; }
+.orb.r3 { width: 240px; height: 240px; left: 62%; top: 6%; opacity: .5; filter: blur(3px); animation-duration: 15s; border-color: rgba(233,230,223,.08); }
+.orb.r4 { width: 70px;  height: 70px;  right: 30%; bottom: 10%; animation-duration: 11s; border-color: rgba(121,196,180,.30); }
+.orb.d1 { width: 9px;   height: 9px;   left: 22%; top: 26%; background: rgba(234,160,94,.55); animation-duration: 6s; }
+.orb.d2 { width: 6px;   height: 6px;   right: 6%;  top: 58%; animation-duration: 8s; }
+.orb.d3 { width: 12px;  height: 12px;  left: 48%; top: 74%; background: rgba(121,196,180,.5); filter: blur(1.5px); animation-duration: 10s; }
+.orb.c1 { width: 22px;  height: 22px;  left: 32%; top: 12%; opacity: .4; animation-duration: 12s; }
+.orb.c2 { width: 16px;  height: 16px;  right: 16%; bottom: 30%; opacity: .35; animation-duration: 9s; }
+.orb.p1 { width: 34px;  height: 34px;  left: 70%; top: 44%; opacity: .3; animation-duration: 13s; }
+.orb.s1 { width: 26px;  height: 26px;  right: 40%; top: 14%; opacity: .35; animation-duration: 14s; }
+
+/* 近景装饰层：更小、更亮、略微虚化（景深对比） */
+.orb.n1 { width: 5px; height: 5px; left: 14%; top: 48%; background: rgba(233,230,223,.6); }
+.orb.n2 { width: 38px; height: 38px; right: 22%; top: 64%; border-color: rgba(234,160,94,.35); filter: blur(2px); animation-duration: 10s; }
+.orb.n3 { width: 8px; height: 8px; left: 56%; top: 8%; background: rgba(234,160,94,.5); filter: blur(2px); }
+
+/* ---------- 二、固定前景层：景深虚化小物，随鼠标快速反向移动 ---------- */
+.fg { position: fixed; will-change: transform; }
+.fg-blob {
+  width: 340px; height: 340px; top: 3%; right: -7%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(234,160,94,.34), rgba(234,160,94,.05) 58%, transparent 72%);
+  filter: blur(10px);              /* 前景失焦，模拟镜头前的东西 */
+}
+.fg-ring {
+  width: 150px; height: 150px; left: 4%; bottom: 7%;
+  border: 1.5px solid rgba(121,196,180,.32); border-radius: 50%;
+  filter: blur(4px);
+}
+.fg-film {                         /* 一段被虚化的胶片齿孔带 */
+  width: 300px; height: 26px; right: 8%; bottom: 4%;
+  border-radius: 3px;
+  background-color: rgba(233,230,223,.10);
+  background-image:
+    radial-gradient(5px 4px at 12px 6px,  var(--bg) 48%, transparent 52%),
+    radial-gradient(5px 4px at 12px 20px, var(--bg) 48%, transparent 52%);
+  background-size: 26px 26px;
+  background-repeat: repeat-x;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transform: rotate(-7deg);
+  filter: blur(5px);
+  opacity: .8;
+}
+.fg-dot {
+  width: 14px; height: 14px; left: 12%; top: 30%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, rgba(234,160,94,.8), rgba(234,160,94,.1));
+  filter: blur(3px);
+}
+
+/* ---------- 三、暗角 + 胶片颗粒（inline SVG noise） ---------- */
+.vignette {
+  inset: 0; z-index: 55;
+  background: radial-gradient(120% 96% at 50% 44%, transparent 55%, rgba(4,4,8,.58) 100%);
+}
+.grain {
+  inset: -80px; z-index: 60; opacity: .06; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  animation: grain 1.4s steps(5) infinite;
+}
+
+/* ---------- 四、内容层 ---------- */
+.content {
+  position: relative;
+  z-index: 10;
+  will-change: transform;
+}
+
+.block {
+  position: relative;
+  max-width: 1180px;
+  margin: clamp(90px, 14vh, 190px) auto;
+  padding: 0 clamp(20px, 5vw, 72px);
+}
+
+.section-inner, [data-speed], [data-fade] { will-change: transform, opacity; }
+
+/* 章节标题：中文大字 + 身后描边英文幽灵字 */
+.sec-title { position: relative; margin-bottom: clamp(48px, 8vh, 96px); }
+.sec-no {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .34em;
+  color: var(--amber);
+  margin-bottom: 12px;
+}
+.sec-cn {
+  position: relative;
+  font-size: clamp(2.6rem, 6vw, 4.6rem);
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+.sec-en {
+  position: absolute;
+  left: -.08em; top: -.66em;
+  z-index: -1;
+  font-size: clamp(60px, 10.5vw, 164px);
+  font-weight: 800;
+  letter-spacing: .05em;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(233, 230, 223, .10);
+  pointer-events: none;
+}
+
+/* ========== 开场：巨型标题舞台 ========== */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 clamp(20px, 5vw, 72px);
+}
+
+/* 顶部一行是「胶片数据」，不是导航 */
+.hero-meta {
+  position: absolute;
+  top: 26px; left: clamp(20px, 5vw, 72px); right: clamp(20px, 5vw, 72px);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .28em;
+  color: var(--ink-faint);
+}
+.hero-meta .am { color: var(--amber); }
+
+/* 巨型标题：中文实心 + 英文描边冲出右屏 */
+.hero-title { position: relative; margin: 0; line-height: .96; }
+.hero-cn {
+  display: block;
+  font-size: clamp(72px, 14vw, 200px);
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+.hero-en {
+  position: absolute;
+  top: -.14em; left: 5vw;
+  font-size: 17vw;                 /* 17vw × 11 字符，必然超出视口宽度 */
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(233, 230, 223, .15);
+  z-index: -1;
+  animation: enIn 1.3s cubic-bezier(.22, 1, .36, 1) .55s backwards;
+}
+
+/* 逐字上浮动画（--i 为字符序号，用于 stagger） */
+.tchar {
+  display: inline-block;
+  opacity: 0;
+  animation: rise .9s cubic-bezier(.22, 1, .36, 1) backwards;
+  animation-delay: calc(.28s + var(--i) * .09s);
+}
+.tchar:hover { color: var(--amber); }
+.tchar.accent { color: var(--amber); }
+
+/* 底部：一句话 + 身份信息 */
+.hero-foot {
+  margin-top: 7vh;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 48px;
+}
+.tagline { font-size: clamp(1.2rem, 2.2vw, 1.7rem); font-weight: 600; letter-spacing: .05em; }
+.tagline .en {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .34em;
+  color: var(--ink-faint);
+}
+.hero-caption {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .18em;
+  color: var(--ink-dim);
+  line-height: 2.1;
+  flex-shrink: 0;
+}
+.hero-caption .name { font-size: 15px; color: var(--ink); letter-spacing: .24em; }
+
+/* 底部胶片数据条 + 滚动提示 */
+.hero-strip {
+  position: absolute;
+  bottom: 24px;
+  left: clamp(20px, 5vw, 72px);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .26em;
+  color: var(--ink-faint);
+}
+.scroll-cue {
+  position: absolute;
+  bottom: 22px;
+  right: clamp(20px, 5vw, 72px);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .3em;
+  color: var(--ink-faint);
+  animation: bob 2.6s ease-in-out infinite;
+}
+.scroll-cue b { color: var(--amber); font-weight: 400; }
+
+/* 标题后的一圈虚线（取景框刻度环），独立滚动速度 */
+.hero-dashring {
+  position: absolute;
+  left: -8vw; top: 58%;
+  width: clamp(200px, 30vw, 420px);
+  height: clamp(200px, 30vw, 420px);
+  border: 1px dashed rgba(233, 230, 223, .14);
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ---------- 胶片齿孔分隔带 ---------- */
+.sprocket {
+  position: relative;
+  height: 30px;
+  border-top: 1px solid rgba(233, 230, 223, .10);
+  border-bottom: 1px solid rgba(233, 230, 223, .10);
+  background-color: rgba(233, 230, 223, .04);
+  background-image:
+    radial-gradient(6px 5px at 13px 8px,  var(--hole) 46%, transparent 52%),
+    radial-gradient(6px 5px at 13px 22px, var(--hole) 46%, transparent 52%);
+  background-size: 28px 30px;
+  background-repeat: repeat-x;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sprocket span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .4em;
+  color: var(--ink-faint);
+  background: var(--bg);
+  padding: 0 16px;
+}
+
+/* ---------- 关于 ---------- */
+.about-grid { max-width: 640px; }
+.lead {
+  font-size: clamp(1.05rem, 1.6vw, 1.3rem);
+  color: var(--ink);
+  margin-bottom: 22px;
+  letter-spacing: .02em;
+}
+.about-text p + p {
+  color: var(--ink-dim);
+  font-size: .98rem;
+}
+
+/* 兴趣清单：暗房编号风格 */
+.interest-list {
+  list-style: none;
+  margin-top: 34px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.interest-list li {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .14em;
+  color: var(--ink-dim);
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  padding: 9px 18px;
+  transition: border-color .3s, color .3s;
+}
+.interest-list li b { color: var(--amber); font-weight: 400; margin-right: 6px; }
+.interest-list li:hover { border-color: rgba(234, 160, 94, .5); color: var(--ink); }
+
+/* 光圈 SVG：六片叶片缓慢旋转，独立滚动速度 */
+.aperture-wrap {
+  position: absolute;
+  right: 2vw;
+  top: 8px;
+  width: clamp(230px, 24vw, 350px);
+}
+.aperture-wrap figcaption {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .4em;
+  color: var(--ink-faint);
+  margin-top: 14px;
+}
+.aperture-blades {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+  animation: spin 36s linear infinite;
+}
+
+/* ---------- 项目卡片：错落排布 + 3D tilt ---------- */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 28px 26px;
+}
+.pj-wrap { position: relative; }
+.pj-1 { grid-column: 1 / span 6; }
+.pj-2 { grid-column: 7 / span 6; margin-top: 130px; transform: rotate(.6deg); }
+.pj-3 { grid-column: 2 / span 6; margin-top: -34px; transform: rotate(-.7deg); }
+.pj-4 { grid-column: 8 / span 5; margin-top: 54px;  transform: rotate(.8deg); }
+
+/* 玻璃感卡片：3D tilt 主体 */
+.tilt {
+  position: relative;
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform .5s cubic-bezier(.2, .7, .3, 1);
+  will-change: transform;
+}
+.tilt:hover { transition-duration: .08s; }
+
+/* 伪元素高光：跟随鼠标角度移动的渐变光斑 */
+.tilt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(420px circle at var(--hx, 50%) var(--hy, 50%),
+              rgba(255, 255, 255, .12), transparent 58%);
+  opacity: 0;
+  transition: opacity .35s;
+}
+.tilt:hover::before { opacity: 1; }
+
+.project-card {
+  display: block;
+  border-radius: 18px;
+  padding: 36px 32px 30px;
+  background: linear-gradient(148deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .015));
+  border: 1px solid rgba(233, 230, 223, .10);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 30px 70px -34px rgba(0, 0, 0, .85);
+  overflow: hidden;
+  transition: box-shadow .4s, border-color .4s;
+}
+.project-card:hover {
+  border-color: rgba(234, 160, 94, .35);
+  box-shadow: 0 44px 90px -36px rgba(0, 0, 0, .9), 0 0 0 1px rgba(234, 160, 94, .08);
+}
+
+/* 取景框四角刻度（8 段线性渐变拼出 L 形） */
+.project-card::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--line), var(--line)) top left    / 18px 1.5px,
+    linear-gradient(var(--line), var(--line)) top left    / 1.5px 18px,
+    linear-gradient(var(--line), var(--line)) top right   / 18px 1.5px,
+    linear-gradient(var(--line), var(--line)) top right   / 1.5px 18px,
+    linear-gradient(var(--line), var(--line)) bottom left / 18px 1.5px,
+    linear-gradient(var(--line), var(--line)) bottom left / 1.5px 18px,
+    linear-gradient(var(--line), var(--line)) bottom right / 18px 1.5px,
+    linear-gradient(var(--line), var(--line)) bottom right / 1.5px 18px;
+  background-repeat: no-repeat;
+  opacity: .55;
+  transition: opacity .4s;
+}
+.project-card:hover::after { opacity: 1; }
+
+/* 幽灵编号 */
+.p-no {
+  position: absolute;
+  right: 10px;
+  top: -26px;
+  font-size: clamp(90px, 9vw, 130px);
+  font-weight: 800;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(233, 230, 223, .07);
+  pointer-events: none;
+}
+.p-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .2em;
+  color: var(--ink-faint);
+}
+.p-meta .p-tag { color: var(--teal); }
+.p-name {
+  margin: 16px 0 4px;
+  font-size: clamp(1.5rem, 2.2vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+.p-name .p-en {
+  margin-left: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: .3em;
+  color: var(--amber);
+  vertical-align: middle;
+}
+.p-desc {
+  color: var(--ink-dim);
+  font-size: .95rem;
+  min-height: 4.6em;
+}
+.p-tags {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 0;
+}
+.p-tags li {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--ink-faint);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+.p-line {
+  margin: 20px 0 12px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(234, 160, 94, .5), transparent 70%);
+}
+.p-foot {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: var(--ink-faint);
+}
+
+/* ---------- 经历：竖排胶片带时间线 ---------- */
+.timeline { position: relative; padding-left: 76px; max-width: 760px; }
+.timeline::before {                    /* 齿孔胶卷带 */
+  content: "";
+  position: absolute;
+  left: 12px; top: 6px; bottom: 6px;
+  width: 17px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background-color: rgba(234, 160, 94, .09);
+  background-image: radial-gradient(5px 4px at 50% 15px, var(--hole) 46%, transparent 52%);
+  background-size: 100% 30px;
+}
+.tl-entry { position: relative; padding-bottom: 76px; }
+.tl-entry:last-child { padding-bottom: 0; }
+.tl-entry::before {                    /* 卷带上的定位点 */
+  content: "";
+  position: absolute;
+  left: -57px; top: 12px;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 4px rgba(234, 160, 94, .16), 0 0 18px rgba(234, 160, 94, .5);
+}
+.tl-year {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .3em;
+  color: var(--amber);
+  border: 1px solid rgba(234, 160, 94, .35);
+  border-radius: 999px;
+  padding: 4px 16px;
+  margin-bottom: 16px;
+}
+.tl-entry h3 {
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: .05em;
+  margin-bottom: 10px;
+}
+.tl-entry h3 .now {
+  margin-left: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .2em;
+  color: var(--teal);
+  border: 1px solid rgba(121, 196, 180, .4);
+  border-radius: 999px;
+  padding: 2px 10px;
+  vertical-align: middle;
+}
+.tl-entry p { color: var(--ink-dim); font-size: .95rem; max-width: 560px; }
+
+/* ---------- 技能 ---------- */
+.skills-intro {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .22em;
+  color: var(--ink-faint);
+  margin-bottom: 44px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.skill-chip {
+  display: inline-block;
+  padding: 16px 26px 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-align: center;
+  transition: filter .35s, border-color .35s, background .35s;
+}
+.skill-chip .en {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: .3em;
+  color: var(--ink-faint);
+  margin-top: 4px;
+}
+.skill-chip:hover {
+  filter: none;
+  border-color: rgba(234, 160, 94, .5);
+  background: rgba(234, 160, 94, .07);
+}
+/* 景深处理：个别 chip 故意失焦，hover 才对上焦 */
+.blur-a { filter: blur(1.6px); }
+.blur-b { filter: blur(3.2px); opacity: .85; }
+
+/* ---------- 联系：明信片 ---------- */
+.pc-wrap { display: flex; justify-content: center; }
+.postcard {
+  position: relative;
+  width: min(600px, 100%);
+  border-radius: 6px;
+  padding: 52px 46px 44px;
+  background: linear-gradient(152deg, rgba(255, 250, 240, .075), rgba(255, 250, 240, .02));
+  border: 1px solid rgba(255, 250, 240, .16);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 34px 80px -40px rgba(0, 0, 0, .9);
+  overflow: hidden;
+}
+/* 邮票（齿孔用点阵径向渐变模拟） */
+.stamp {
+  position: absolute;
+  top: 20px; right: 26px;
+  width: 92px; height: 106px;
+  border: 1.5px dashed rgba(234, 160, 94, .55);
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--amber);
+  transform: rotate(3deg);
+  background:
+    radial-gradient(circle at 0 12px,  var(--bg) 4px, transparent 4.5px) repeat-y,
+    radial-gradient(circle at 0 12px,  var(--bg) 4px, transparent 4.5px) repeat-y;
+  background-size: 100% 26px;
+  background-position: left, right;
+}
+.stamp .sc { font-size: 34px; font-weight: 800; line-height: 1.1; }
+.stamp .se { font-family: var(--font-mono); font-size: 8px; letter-spacing: .26em; }
+/* 邮戳圆印 */
+.stamp::after {
+  content: "HANGZHOU · 2026.08";
+  position: absolute;
+  inset: auto;
+  width: 118px;
+  padding: 2px 0;
+  border: 1px solid rgba(234, 160, 94, .38);
+  border-radius: 50%;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .2em;
+  color: rgba(234, 160, 94, .5);
+  transform: rotate(-16deg) translateY(-4px);
+}
+.pc-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .4em;
+  color: var(--ink-faint);
+  margin-bottom: 14px;
+}
+.pc-title { font-size: clamp(1.4rem, 2.4vw, 1.9rem); font-weight: 800; letter-spacing: .04em; }
+.pc-desc { color: var(--ink-dim); font-size: .95rem; margin: 14px 0 30px; }
+.pc-links { display: flex; flex-wrap: wrap; gap: 14px 40px; }
+.pc-links a {
+  font-family: var(--font-mono);
+  font-size: 1.02rem;
+  letter-spacing: .06em;
+  text-decoration: none;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(234, 160, 94, .45);
+  transition: color .3s, border-color .3s;
+}
+.pc-links a:hover { color: var(--amber); border-color: var(--amber); }
+.pc-addr {
+  margin-top: 34px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .24em;
+  color: var(--ink-faint);
+}
+.pc-sign { margin-top: 16px; text-align: right; font-size: 1.05rem; letter-spacing: .1em; color: var(--ink-dim); }
+
+/* ---------- 页脚 ---------- */
+.footer {
+  position: relative;
+  padding: 70px clamp(20px, 5vw, 72px) 90px;
+  text-align: center;
+  color: var(--ink-faint);
+}
+.footer p { font-family: var(--font-mono); font-size: 11px; letter-spacing: .22em; }
+.footer p + p { margin-top: 10px; font-size: 10px; opacity: .7; }
+
+/* ---------- 固定角标：胶片曝光计数器 ---------- */
+.frame-counter {
+  right: 22px; bottom: 20px;
+  z-index: 70;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: .22em;
+  color: var(--ink-faint);
+  border-left: 2px solid var(--amber);
+  padding-left: 14px;
+  line-height: 1.7;
+}
+.frame-counter .fc-exp { color: var(--ink); }
+.frame-counter .fc-label {
+  display: block;
+  font-size: 9px;
+  letter-spacing: .4em;
+  color: var(--ink-faint);
+}
+
+/* ============================================================
+   动画
+   ============================================================ */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(1.1em) rotate(4deg); filter: blur(6px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+@keyframes enIn {
+  from { opacity: 0; transform: translateX(9vw); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes float {
+  from { transform: translateY(-16px); }
+  to   { transform: translateY(16px); }
+}
+@keyframes drift {
+  from { transform: translate(-24px, -20px); }
+  to   { transform: translate(28px, 24px); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(7px); }
+}
+@keyframes grain {
+  0%   { background-position: 0 0; }
+  25%  { background-position: -60px 40px; }
+  50%  { background-position: 40px -70px; }
+  75%  { background-position: -30px -30px; }
+  100% { background-position: 0 0; }
+}
+
+/* ============================================================
+   响应式：移动端布局不崩（鼠标视差由 JS 关闭，此处收拢排版）
+   ============================================================ */
+@media (max-width: 900px) {
+  .hero-en { font-size: 15vw; }
+  .hero-foot { flex-direction: column; align-items: flex-start; gap: 28px; }
+  .hero-caption { text-align: left; }
+  .hero-strip { display: none; }
+
+  /* 项目卡片改为单列 */
+  .projects-grid { grid-template-columns: 1fr; }
+  .pj-1, .pj-2, .pj-3, .pj-4 {
+    grid-column: 1;
+    margin-top: 0;
+    transform: none;
+  }
+  .pj-wrap + .pj-wrap { margin-top: 34px; }
+
+  /* 光圈图回到文档流，排在文字之后 */
+  .aperture-wrap {
+    position: static;
+    width: min(72vw, 300px);
+    margin: 56px auto 0;
+  }
+
+  .timeline { padding-left: 56px; }
+  .tl-entry::before { left: -38px; }
+
+  /* 移动端减少虚化量，减轻 GPU 负担 */
+  .bokeh { filter: blur(34px); }
+  .fg-blob { width: 200px; height: 200px; }
+  .fg-ring { display: none; }
+  .fg-film { width: 200px; }
+}
+
+@media (max-width: 560px) {
+  .hero-cn { font-size: 19vw; }
+  .hero-en { font-size: 13.5vw; }
+  .hero-meta { font-size: 9px; letter-spacing: .18em; }
+  .project-card { padding: 28px 22px 24px; }
+  .postcard { padding: 40px 24px 34px; }
+  .stamp { width: 76px; height: 90px; top: 14px; right: 14px; }
+  .frame-counter { display: none; }
+  .fg-film { display: none; }
+}
+
+/* 用户偏好减少动效：关闭全部动画，保证可读性 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .tchar { opacity: 1; transform: none; }
+  .hero-en { opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- ================= 背景场景（三层固定层，随鼠标视差） ================= -->
+<div class="stage" aria-hidden="true">
+  <div class="layer layer--glow" data-depth="0"></div>
+  <div class="layer layer--bokeh" data-depth="12">
+    <span class="bokeh b1"></span>
+    <span class="bokeh b2"></span>
+    <span class="bokeh b3"></span>
+    <span class="bokeh b4"></span>
+    <span class="bokeh b5"></span>
+    <span class="bokeh b6"></span>
+  </div>
+  <div class="layer layer--geo" data-depth="28">
+    <span class="orb ring r1"></span>
+    <span class="orb ring r2"></span>
+    <span class="orb ring r3"></span>
+    <span class="orb ring r4"></span>
+    <span class="orb dot d1"></span>
+    <span class="orb dot d2"></span>
+    <span class="orb dot d3"></span>
+    <span class="orb cross c1"></span>
+    <span class="orb cross c2"></span>
+    <span class="orb plus p1"></span>
+    <span class="orb square s1"></span>
+  </div>
+  <div class="layer layer--near" data-depth="44">
+    <span class="orb dot n1"></span>
+    <span class="orb ring n2"></span>
+    <span class="orb dot n3"></span>
+  </div>
+</div>
+
+<!-- ================= 前景层：虚化小物（更快的反向视差 + 景深） ================= -->
+<div class="foreground" aria-hidden="true">
+  <span class="fg fg-blob" data-depth="-74"></span>
+  <span class="fg fg-ring" data-depth="-52"></span>
+  <span class="fg fg-film" data-depth="-66"></span>
+  <span class="fg fg-dot"  data-depth="-92"></span>
+</div>
+
+<!-- ================= 内容层 ================= -->
+<main class="content" data-depth="6">
+
+  <!-- 开场：巨型标题舞台 -->
+  <header class="hero">
+    <div class="hero-meta" data-speed="0.22" data-fade>
+      <span><span class="am">LIN CHUAN</span> — 林川</span>
+      <span>HANGZHOU · 30.25°N 120.16°E</span>
+    </div>
+
+    <div class="hero-dashring" data-speed="0.3" aria-hidden="true"></div>
+
+    <div class="hero-inner" data-speed="-0.1" data-fade>
+      <h1 class="hero-title" aria-label="代码与胶片">
+        <span class="hero-cn">
+          <span class="tchar" style="--i:0">代</span><span class="tchar" style="--i:1">码</span><span class="tchar" style="--i:2">与</span><span class="tchar" style="--i:3">胶</span><span class="tchar accent" style="--i:4">片</span>
+        </span>
+        <span class="hero-en" aria-hidden="true">CODE&nbsp;&amp;&nbsp;FILM</span>
+      </h1>
+    </div>
+
+    <div class="hero-foot" data-speed="0.16" data-fade>
+      <p class="tagline">
+        白天写代码，晚上拍胶片。
+        <span class="en">WRITE CODE BY DAY — SHOOT FILM BY NIGHT</span>
+      </p>
+      <div class="hero-caption">
+        <div class="name">LIN CHUAN</div>
+        <div>独立开发者 / 胶片摄影师</div>
+        <div>杭州 · HANGZHOU</div>
+      </div>
+    </div>
+
+    <div class="hero-strip" data-speed="0.18" data-fade>
+      FUJICOLOR C400 · 35MM · f/2.8 · 1/125 · EST. 2018
+    </div>
+    <div class="scroll-cue"><b>SCROLL</b> TO DEVELOP ↓</div>
+  </header>
+
+  <!-- 01 关于 -->
+  <section class="block about" id="about">
+    <h2 class="sec-title" data-speed="0.22">
+      <span class="sec-no">SEC.01</span>
+      <span class="sec-cn">关于</span>
+      <span class="sec-en" aria-hidden="true">ABOUT</span>
+    </h2>
+
+    <div class="section-inner about-grid" data-speed="0.06">
+      <div class="about-text">
+        <p class="lead">曾在互联网大厂做前端工程师，2023 年辞职成为独立开发者。相信小而美的产品：做给自己用的工具，写给人看的故事。</p>
+        <p>现在住在杭州。一半时间对着编辑器写 SwiftUI，一半时间背着 Pentax 67 在山里和暗房之间来回。写代码和拍胶片在他眼里是同一件事：都在等一个合适的时机按下快门。</p>
+        <ul class="interest-list">
+          <li><b>01</b>胶片摄影 FILM</li>
+          <li><b>02</b>徒步 HIKING</li>
+          <li><b>03</b>煮咖啡 POUR-OVER</li>
+          <li><b>04</b>收集旧地图 OLD MAPS</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 光圈图：独立滚动速度，制造区块间的速度差 -->
+    <figure class="aperture-wrap" data-speed="0.16" aria-hidden="true">
+      <svg viewBox="0 0 200 200" class="aperture" role="img" aria-label="光圈示意图">
+        <circle cx="100" cy="100" r="96" fill="none" stroke="var(--line)" />
+        <circle cx="100" cy="100" r="58" fill="none" stroke="var(--line)" stroke-dasharray="2 7" />
+        <g class="aperture-blades" fill="rgba(233,230,223,.10)" stroke="rgba(233,230,223,.16)">
+          <polygon points="116.4,88.5 116.4,111.5 181.6,138.0 181.6,62.0" />
+          <polygon points="118.1,108.5 98.3,119.9 107.8,189.7 173.7,151.6" />
+          <polygon points="101.7,119.9 81.9,108.5 26.3,151.6 92.2,189.7" />
+          <polygon points="83.6,111.5 83.6,88.5 18.4,62.0 18.4,138.0" />
+          <polygon points="81.9,91.5 101.7,80.1 92.2,10.3 26.3,48.4" />
+          <polygon points="98.3,80.1 118.1,91.5 173.7,48.4 107.8,10.3" />
+        </g>
+        <circle cx="100" cy="100" r="8" fill="var(--amber)" />
+      </svg>
+      <figcaption>APERTURE f/2.8 — f/16</figcaption>
+    </figure>
+  </section>
+
+  <!-- 02 作品 -->
+  <section class="block projects" id="works">
+    <h2 class="sec-title" data-speed="0.24">
+      <span class="sec-no">SEC.02</span>
+      <span class="sec-cn">作品</span>
+      <span class="sec-en" aria-hidden="true">WORKS</span>
+    </h2>
+
+    <div class="section-inner" data-speed="0.08">
+      <div class="projects-grid">
+
+        <!-- 拾光 -->
+        <div class="pj-wrap pj-1">
+          <article class="project-card tilt">
+            <span class="p-no" aria-hidden="true">01</span>
+            <div class="p-meta"><span class="p-tag">iOS · 摄影</span><span>2023</span></div>
+            <h3 class="p-name">拾光<span class="p-en">SHIGUANG</span></h3>
+            <p class="p-desc">模拟 12 种经典胶卷色彩的胶片相机 App —— 从 Kodak Portra 的奶油肤色到 Fuji Velvia 的浓烈山谷，把暗房里的颜色装进口袋。</p>
+            <ul class="p-tags">
+              <li>SwiftUI</li><li>Core Image</li><li>12 款胶卷</li><li>评分 4.9/5</li>
+            </ul>
+            <div class="p-line"></div>
+            <div class="p-foot">快门 24,681 · 上架 1,024 天</div>
+          </article>
+        </div>
+
+        <!-- 码字 -->
+        <div class="pj-wrap pj-2">
+          <article class="project-card tilt">
+            <span class="p-no" aria-hidden="true">02</span>
+            <div class="p-meta"><span class="p-tag">桌面 · 写作</span><span>2024</span></div>
+            <h3 class="p-name">码字<span class="p-en">MAZI</span></h3>
+            <p class="p-desc">本地优先的 Markdown 写作工具：所有文字留在你自己的硬盘上。不上传、不订阅、不打扰，打开就能写。</p>
+            <ul class="p-tags">
+              <li>TypeScript</li><li>Tauri</li><li>本地优先</li><li>开源</li>
+            </ul>
+            <div class="p-line"></div>
+            <div class="p-foot">导出 0 次云端 · 每天写 40 分钟</div>
+          </article>
+        </div>
+
+        <!-- 岛读 -->
+        <div class="pj-wrap pj-3">
+          <article class="project-card tilt">
+            <span class="p-no" aria-hidden="true">03</span>
+            <div class="p-meta"><span class="p-tag">Web · 阅读</span><span>2022 · 业余项目</span></div>
+            <h3 class="p-name">岛读<span class="p-en">DODU</span></h3>
+            <p class="p-desc">给纸质书做读书笔记的 App：扫一下书页，笔记回到书里的那一行。翻书，而不是刷屏。</p>
+            <ul class="p-tags">
+              <li>React</li><li>OCR</li><li>纸质书友好</li><li>PWA</li>
+            </ul>
+            <div class="p-line"></div>
+            <div class="p-foot">53,000 条页边笔记</div>
+          </article>
+        </div>
+
+        <!-- 午后电台 -->
+        <div class="pj-wrap pj-4">
+          <article class="project-card tilt">
+            <span class="p-no" aria-hidden="true">04</span>
+            <div class="p-meta"><span class="p-tag">Web · 声音</span><span>2025</span></div>
+            <h3 class="p-name">午后电台<span class="p-en">AFTERNOON RADIO</span></h3>
+            <p class="p-desc">收集城市声音的网站：杭州的雨、菜市场的吆喝、西湖边下午三点的风。戴上耳机，走进另一条街。</p>
+            <ul class="p-tags">
+              <li>Web Audio</li><li>田野录音</li><li>城市漫步</li><li>开源</li>
+            </ul>
+            <div class="p-line"></div>
+            <div class="p-foot">412 段声音 · 68 个街区</div>
+          </article>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 胶片齿孔分隔带（独立滚动速度） -->
+  <div class="sprocket" data-speed="0.28" aria-hidden="true"><span>35MM · KODAK 400 · FRAME</span></div>
+
+  <!-- 03 经历 -->
+  <section class="block journey" id="journey">
+    <h2 class="sec-title" data-speed="0.2">
+      <span class="sec-no">SEC.03</span>
+      <span class="sec-cn">经历</span>
+      <span class="sec-en" aria-hidden="true">JOURNEY</span>
+    </h2>
+
+    <div class="section-inner" data-speed="0.07">
+      <div class="timeline">
+        <div class="tl-entry">
+          <span class="tl-year">2018 — 2023</span>
+          <h3>某互联网公司 · 前端工程师</h3>
+          <p>从业务组件到设计系统，把上千个页面打磨成一致的体验。业余时间开始捣鼓自己的小工具 —— 那时还不知道，三年后会因此辞职。</p>
+        </div>
+        <div class="tl-entry">
+          <span class="tl-year">2023 — 至今</span>
+          <h3>独立开发者 / 胶片摄影师<span class="now">NOW</span></h3>
+          <p>辞职做自己的产品：做给自己用的工具，写给人看的故事。现在的工作台上一台 Mac、一台 Pentax 67，和一叠还没冲洗的胶卷。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 技能 -->
+  <section class="block skills" id="skills">
+    <h2 class="sec-title" data-speed="0.18">
+      <span class="sec-no">SEC.04</span>
+      <span class="sec-cn">技能</span>
+      <span class="sec-en" aria-hidden="true">SKILLS</span>
+    </h2>
+
+    <div class="section-inner" data-speed="0.05">
+      <p class="skills-intro">写过的语言不多，拍过的胶卷不少。</p>
+      <!-- 每个 chip 自带鼠标视差深度（data-depth），个别故意失焦 -->
+      <div class="chips">
+        <span class="skill-chip" data-depth="-12">TypeScript<span class="en">6 YEARS</span></span>
+        <span class="skill-chip blur-a" data-depth="-20">React<span class="en">6 YEARS</span></span>
+        <span class="skill-chip" data-depth="-9">SwiftUI<span class="en">3 YEARS</span></span>
+        <span class="skill-chip blur-b" data-depth="-26">摄影<span class="en">PHOTOGRAPHY</span></span>
+        <span class="skill-chip blur-a" data-depth="-16">写作<span class="en">WRITING</span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 联系 -->
+  <section class="block contact" id="contact">
+    <h2 class="sec-title" data-speed="0.16">
+      <span class="sec-no">SEC.05</span>
+      <span class="sec-cn">联系</span>
+      <span class="sec-en" aria-hidden="true">CONTACT</span>
+    </h2>
+
+    <div class="section-inner" data-speed="0.06">
+      <div class="pc-wrap">
+        <!-- 明信片同样支持 3D tilt -->
+        <article class="postcard tilt">
+          <span class="stamp"><span class="sc">杭</span><span class="se">HANGZHOU</span></span>
+          <p class="pc-label">POSTCARD · 来信</p>
+          <h3 class="pc-title">想聊代码，或者聊胶片？</h3>
+          <p class="pc-desc">工作邮件与暗房信件都欢迎。胶片里的回复，一般会在 48 小时内冲洗出来。</p>
+          <div class="pc-links">
+            <a href="mailto:linchuan@example.com">linchuan@example.com</a>
+            <a href="https://github.com/linchuan-dev" target="_blank" rel="noopener">github.com/linchuan-dev</a>
+          </div>
+          <div class="pc-addr">LIN CHUAN · 杭州 HANGZHOU · 30.25°N 120.16°E</div>
+          <div class="pc-sign">—— 林川</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <p>© 2026 林川 LIN CHUAN · 白天写代码，晚上拍胶片</p>
+    <p>本站零外部资源 · 全部视觉由 CSS 与内联 SVG 绘制 · 在杭州的一间旧公寓里写完</p>
+  </footer>
+</main>
+
+<!-- 胶片曝光计数器：滚动进度映射为 1—36 张 -->
+<div class="frame-counter" aria-hidden="true">
+  EXP <span class="fc-exp" id="fcExp">01</span> / 36
+  <span class="fc-label">EXPOSURES</span>
+</div>
+
+<!-- 暗角与颗粒 -->
+<div class="vignette" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* 环境检测：触屏设备 / 偏好减少动效时，直接跳过所有视差与 tilt */
+  var finePointer = window.matchMedia('(pointer: fine)').matches;
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var parallaxOn  = finePointer && !reduceMotion;
+
+  /* ----------------------------------------------------------
+     1) 鼠标多层视差
+     鼠标位置归一化到 [-0.5, 0.5]，用 lerp 平滑逼近目标值；
+     data-depth 为正 → 反向移动（背景层），为负 → 同向快速移动（前景层）
+     ---------------------------------------------------------- */
+  var depthEls = Array.prototype.slice.call(document.querySelectorAll('[data-depth]'));
+  var targetX = 0, targetY = 0, curX = 0, curY = 0;
+
+  if (parallaxOn) {
+    window.addEventListener('mousemove', function (e) {
+      targetX = e.clientX / window.innerWidth  - 0.5;
+      targetY = e.clientY / window.innerHeight - 0.5;
+    }, { passive: true });
+
+    (function loop() {
+      curX += (targetX - curX) * 0.055;   /* 平滑系数：数值越小越「跟手越慢」 */
+      curY += (targetY - curY) * 0.055;
+      depthEls.forEach(function (el) {
+        var d = parseFloat(el.dataset.depth) || 0;
+        el.style.transform = 'translate3d(' + (-curX * d).toFixed(2) + 'px,' +
+                                                (-curY * d).toFixed(2) + 'px,0)';
+      });
+      window.requestAnimationFrame(loop);
+    })();
+  }
+
+  /* ----------------------------------------------------------
+     2) 卡片 3D tilt
+     鼠标在卡片内的相对位置 → rotateX / rotateY + 高光坐标 --hx/--hy
+     （高光渐变在 .tilt::before 里跟随移动）
+     ---------------------------------------------------------- */
+  var tiltEls = document.querySelectorAll('.tilt');
+  if (parallaxOn) {
+    Array.prototype.forEach.call(tiltEls, function (el) {
+      el.addEventListener('mousemove', function (e) {
+        var r = el.getBoundingClientRect();
+        var px = (e.clientX - r.left) / r.width  - 0.5;
+        var py = (e.clientY - r.top)  / r.height - 0.5;
+        el.style.setProperty('--rx', (-py * 10).toFixed(2) + 'deg');
+        el.style.setProperty('--ry', ( px * 14).toFixed(2) + 'deg');
+        el.style.setProperty('--hx', ((px + 0.5) * 100).toFixed(1) + '%');
+        el.style.setProperty('--hy', ((py + 0.5) * 100).toFixed(1) + '%');
+      });
+      el.addEventListener('mouseleave', function () {
+        el.style.setProperty('--rx', '0deg');
+        el.style.setProperty('--ry', '0deg');
+      });
+    });
+  }
+
+  /* ----------------------------------------------------------
+     3) 滚动视差 + 淡出 + 胶片计数器
+     data-speed：元素中心相对视口中心的偏移 × 速度 → translateY
+     data-fade ：首屏元素随滚动淡出
+     计数器   ：滚动进度映射为 1—36（一卷胶片 36 张）
+     ---------------------------------------------------------- */
+  var speedEls = Array.prototype.slice.call(document.querySelectorAll('[data-speed]'));
+  var fadeEls  = Array.prototype.slice.call(document.querySelectorAll('[data-fade]'));
+  var expEl    = document.getElementById('fcExp');
+  var ticking  = false;
+
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function () {
+      var vh = window.innerHeight;
+
+      if (!reduceMotion) {
+        speedEls.forEach(function (el) {
+          var s   = parseFloat(el.dataset.speed) || 0;
+          var r   = el.getBoundingClientRect();
+          var off = (r.top + r.height / 2 - vh / 2) * s;   /* 不同区块不同速率 */
+          el.style.transform = 'translate3d(0,' + off.toFixed(1) + 'px,0)';
+        });
+        fadeEls.forEach(function (el) {
+          var r = el.getBoundingClientRect();
+          var p = Math.min(1, Math.max(0, (vh * 0.9 - r.top) / (vh * 0.9)));
+          el.style.opacity = p.toFixed(3);
+        });
+      }
+
+      /* 滚动进度 → 曝光张数 */
+      var max = document.documentElement.scrollHeight - vh;
+      var n = max > 0 ? Math.min(36, 1 + Math.round((window.scrollY / max) * 35)) : 1;
+      if (expEl) expEl.textContent = String(n).padStart(2, '0');
+
+      ticking = false;
+    });
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+})();
+</script>
+</body>
+</html>

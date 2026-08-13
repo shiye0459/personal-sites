@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="林川 Lin Chuan — 独立开发者 / 胶片摄影师。白天写代码，晚上拍胶片。">
+<title>林川 LIN CHUAN — 独立开发者 / 胶片摄影师</title>
+<!-- 站点图标：内联 SVG data URI（红色实心圆），保持零外部依赖 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23E30613'/%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   07-swiss.html — 瑞士国际主义风格个人主页（Swiss Style）
+   ------------------------------------------------------------
+   版式语言：
+   · 12 列母网格，所有区块对齐同一套隐形网格
+   · 黑白 + 单一瑞士红 #E30613，无第三种色
+   · 巨字号标题 clamp(4rem, 12vw, 11rem) vs 11px 小号密集信息
+   · 1px 细线分隔区块；经历用表格化行
+   · 几何装饰：实心圆 / 半圆 / 粗箭头（CSS 与内联 SVG）
+   · 正文一律左对齐、右侧参差（禁止两端对齐）
+   ============================================================ */
+
+/* ---------- 设计变量 ---------- */
+:root {
+  --black: #000000;
+  --white: #ffffff;
+  --red: #E30613;                 /* 瑞士红：全站唯一的彩色 */
+  --font: 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --line: 1px solid var(--black); /* 全站统一 1px 细线 */
+  --gap: 16px;                    /* 12 列网格列间距 */
+}
+
+/* ---------- 重置 ---------- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  font-size: 16px;
+  background: var(--white);
+  color: var(--black);
+  line-height: 1.6;
+  text-align: left;               /* 左对齐右侧参差，全站禁止 justify */
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a { color: inherit; text-decoration: none; }
+a:hover { color: var(--red); }
+button { font-family: inherit; }
+::selection { background: var(--red); color: var(--white); }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+/* ---------- 通用工具类 ---------- */
+
+/* 小号大写英文：拉大字距（瑞士排版的签名细节） */
+.caps {
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 红色点缀文字（句号等） */
+.red { color: var(--red); }
+
+/* 描边空心大数字：01 / 02 / 03 / 04（印刷海报式页码） */
+.outline { color: var(--black); font-weight: 900; }
+@supports (-webkit-text-stroke: 1px black) {
+  .outline {
+    color: transparent;
+    -webkit-text-stroke: 1.5px var(--black);
+  }
+}
+
+/* ---------- 页面骨架 ---------- */
+
+/* 母网格：所有区块挂在这张 12 列网格上；顶部一条细黑线收边 */
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 24px;
+  border-top: var(--line);        /* 顶部细黑线 */
+  border-bottom: var(--line);     /* 底部收口细线 */
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: var(--gap);
+}
+
+/* 每个横贯区块内部复制同一套 12 列网格 → 全页纵向严格对齐 */
+.page > * {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: var(--gap);
+}
+
+/* hover 主区块时浮现制版网格参考线：纵向对齐 12 列，横向每 40px 一行 */
+.section { scroll-margin-top: 20px; }
+.section:hover {
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 1px, transparent 1px calc(100% / 12)),
+    repeating-linear-gradient(0deg,  rgba(0,0,0,.06) 0 1px, transparent 1px 40px);
+}
+
+/* ---------- 刊头：顶部细黑线下的一条印刷信息 ---------- */
+.masthead {
+  align-items: baseline;
+  padding: 14px 0 12px;
+  border-bottom: var(--line);
+  font-size: 11px;
+}
+/* 左上角：刊名（页角链接，回到顶部） */
+.masthead__mark { grid-column: 1 / 4; font-weight: 900; letter-spacing: .14em; }
+.masthead__mark sup { color: var(--red); font-size: 8px; margin-left: 2px; }
+.masthead__sub { grid-column: 4 / 8; font-weight: 300; }
+/* 右上角：页码式目录 */
+.masthead__nav { grid-column: 8 / 13; justify-self: end; display: flex; gap: 16px; font-weight: 900; }
+
+/* ---------- 01 封面：巨字标题 + 信息卡 ---------- */
+.hero {
+  border-bottom: var(--line);
+  padding: 48px 0 72px;
+}
+.hero__index {
+  grid-column: 1 / 2;
+  align-self: start;
+  padding-top: 10px;
+  font-size: clamp(2.4rem, 5vw, 4.8rem);
+  line-height: 1;
+  letter-spacing: .02em;
+}
+/* 巨字号标题：黑 900 与细 300 的强烈字重对比 */
+.hero__title {
+  grid-column: 2 / 9;
+  font-size: clamp(4rem, 12vw, 11rem);
+  font-weight: 900;
+  line-height: 1.02;
+  white-space: nowrap;
+}
+.hero__title .hero__thin { font-weight: 300; }
+/* 标题末尾的大红点：像一枚放大的句号 */
+.hero__dot {
+  display: inline-block;
+  width: .32em;
+  height: .32em;
+  margin-left: .08em;
+  border-radius: 50%;
+  background: var(--red);
+  vertical-align: .04em;
+}
+/* 右侧信息卡：小字号密集数据 + 半圆几何装饰 */
+.hero__aside { grid-column: 9 / 13; padding-top: 14px; }
+.hero__aside-label { font-size: 10px; font-weight: 900; margin-bottom: 12px; }
+.hero__data-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  column-gap: 12px;
+  border-top: var(--line);
+  padding: 9px 0;
+  font-size: 13px;
+}
+.hero__data-row:last-child { border-bottom: var(--line); }
+.hero__data-row dt { font-size: 10px; font-weight: 900; }
+.hero__data-row dd { font-weight: 300; }
+/* 半圆：纯 SVG 路径 */
+.hero__semi { width: 120px; height: 60px; margin-top: 32px; fill: var(--black); }
+/* 一句话标语：细体大字号 */
+.hero__slogan {
+  grid-column: 3 / 9;
+  margin-top: 32px;
+  font-size: clamp(1.5rem, 3.6vw, 3rem);
+  font-weight: 300;
+  line-height: 1.55;
+}
+.hero__slogan-en { grid-column: 3 / 9; margin-top: 14px; font-size: 10px; font-weight: 900; opacity: .7; }
+/* 粗箭头：指向 02 项目 */
+.hero__down {
+  grid-column: 12 / 13;
+  grid-row: 2;
+  align-self: end;
+  justify-self: end;
+  width: 40px;
+  height: 84px;
+}
+.hero__down svg { width: 100%; height: 100%; fill: currentColor; }
+.hero__down:hover { color: var(--red); }
+
+/* ---------- 黑色反白横幅：完整简介 ---------- */
+.band {
+  background: var(--black);
+  color: var(--white);
+  border-bottom: var(--line);
+  align-items: center;
+  padding: clamp(40px, 6vw, 72px) 0;
+}
+.band__inner { grid-column: 1 / 10; }
+.band__pre { font-size: 10px; font-weight: 900; margin-bottom: 18px; }
+.band__pre::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--red);
+  margin-right: 10px;
+}
+.band__small { font-size: 13px; font-weight: 300; opacity: .8; margin-bottom: 26px; max-width: 560px; }
+.band__quote { font-size: clamp(1.7rem, 3.4vw, 2.9rem); font-weight: 300; line-height: 1.5; }
+/* 右侧红色实心圆 */
+.band__circle {
+  grid-column: 11 / 13;
+  justify-self: end;
+  width: clamp(56px, 7vw, 96px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+/* ---------- 区块头：大数字索引 + 标题 ---------- */
+.section-head {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: var(--gap);
+  align-items: end;
+  border-bottom: var(--line);
+  padding-bottom: 18px;
+}
+.section-head__index {
+  grid-column: 1 / 2;
+  font-size: clamp(2.4rem, 5vw, 4.6rem);
+  line-height: .9;
+  letter-spacing: .02em;
+}
+.section-head__main { grid-column: 2 / 7; }
+.section-head__title {
+  font-size: clamp(1.5rem, 2.2vw, 1.8rem);
+  font-weight: 900;
+  line-height: 1.1;
+}
+/* 标题前的小红方块：贯穿全站的红色标记 */
+.section-head__title::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--red);
+  margin-right: 14px;
+}
+.section-head__en { margin-top: 6px; font-size: 10px; font-weight: 900; opacity: .7; }
+.section-head__hint { grid-column: 8 / 13; justify-self: end; font-size: 10px; font-weight: 900; opacity: .7; }
+
+/* 主区块：上方留白，底部由区块细线收口 */
+.projects, .exp, .misc {
+  padding-top: clamp(48px, 6vw, 80px);
+  border-bottom: var(--line);
+}
+
+/* ---------- 02 项目：表格化行，点击展开 ---------- */
+.projects__list { grid-column: 1 / -1; }
+.project__row {
+  display: grid;
+  grid-template-columns: 64px minmax(220px, 1.1fr) minmax(260px, 1.5fr) auto 36px;
+  grid-template-areas: 'no name desc meta toggle';
+  column-gap: var(--gap);
+  align-items: center;
+  width: 100%;
+  padding: 24px 0;
+  border: 0;
+  border-top: var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+/* 首行上方已有区块头的细线，不再重复 */
+.project:first-child .project__row { border-top: 0; }
+/* hover：整行反色（黑底白字），编号转红 */
+.project__row:hover { background: var(--black); color: var(--white); }
+.project__row:hover .project__no { color: var(--red); }
+.project__no { grid-area: no; font-size: 13px; font-weight: 900; }
+.project__name { grid-area: name; font-size: clamp(1.4rem, 2.4vw, 2rem); font-weight: 900; line-height: 1.15; }
+.project__en { display: block; margin-top: 6px; font-size: 10px; font-weight: 900; letter-spacing: .16em; opacity: .55; }
+.project__desc { grid-area: desc; font-size: 13.5px; font-weight: 300; line-height: 1.7; }
+.project__meta { grid-area: meta; font-size: 11px; font-weight: 900; letter-spacing: .1em; white-space: nowrap; }
+/* 「+」号：展开后旋转 45° 变成「×」并转红 */
+.project__toggle { grid-area: toggle; justify-self: end; font-size: 22px; font-weight: 300; transition: transform .3s, color .2s; }
+.project.is-open .project__toggle { transform: rotate(45deg); color: var(--red); }
+
+/* 详情：grid-template-rows 0fr → 1fr 实现平滑展开 */
+.project__detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .35s ease; }
+.project.is-open .project__detail { grid-template-rows: 1fr; }
+.project__detail-inner {
+  overflow: hidden;
+  margin: 0 0 32px 80px;          /* 缩进到项目名所在列 */
+  padding-left: 20px;
+  border-left: 3px solid var(--red);
+  max-width: 640px;
+  font-size: 13.5px;
+  font-weight: 300;
+  line-height: 1.9;
+}
+.project__detail-meta { margin-top: 12px; font-size: 10px; font-weight: 900; letter-spacing: .14em; }
+
+/* ---------- 03 经历：年份 / 机构 / 职位 / 城市 / 说明 ---------- */
+.exp__table { grid-column: 1 / -1; }
+.exp__row {
+  display: grid;
+  grid-template-columns: 150px 1.3fr 1fr 72px 2fr;
+  column-gap: var(--gap);
+  align-items: baseline;
+  padding: 18px 0;
+  border-top: var(--line);
+  transition: background .15s, color .15s;
+}
+.exp__head { border-top: 0; font-size: 10px; font-weight: 900; padding: 14px 0 10px; }
+/* 与项目行一致的整行反色交互 */
+.exp__row:not(.exp__head):hover { background: var(--black); color: var(--white); }
+.exp__years { font-weight: 900; font-size: 14px; }
+.exp__org { font-weight: 400; font-size: 15px; }
+.exp__role { font-weight: 300; font-size: 14px; }
+.exp__city { font-weight: 300; font-size: 12px; }
+.exp__note { font-weight: 300; font-size: 13px; }
+/* 「现在」这一行用红色标注年份 */
+.exp__row--now .exp__years { color: var(--red); }
+
+/* ---------- 04 技能 / 兴趣 / 联系 ---------- */
+.misc__cols {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: var(--gap);
+}
+.misc__col--skills { grid-column: 1 / 5; }
+.misc__col--interests { grid-column: 6 / 8; }
+.misc__col--contact { grid-column: 9 / 13; }
+.misc__h { font-size: 10px; font-weight: 900; margin-bottom: 14px; }
+.misc__h::before { content: '■'; color: var(--red); font-size: 8px; margin-right: 8px; vertical-align: 2px; }
+.misc__list { list-style: none; }
+.misc__list li {
+  border-top: var(--line);
+  padding: 13px 0;
+  font-size: clamp(1.1rem, 1.8vw, 1.4rem);
+  font-weight: 300;
+}
+/* 技能：黑色方块标记；兴趣：红色圆点标记 */
+.misc__list li::before { content: '■'; font-size: 10px; margin-right: 14px; vertical-align: 4px; }
+.misc__list--dots li::before { content: '●'; color: var(--red); }
+.misc__list li:first-child { border-top: 0; padding-top: 0; }
+.misc__mail {
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(1.25rem, 2vw, 1.8rem);
+  font-weight: 900;
+  line-height: 1.4;
+  word-break: break-all;
+}
+.misc__mail:hover { color: var(--red); }
+.misc__gh { display: block; margin-top: 10px; font-size: 12px; font-weight: 900; letter-spacing: .12em; }
+.misc__gh span { display: inline-block; transition: transform .2s; }
+.misc__gh:hover span { transform: translate(3px, -3px); color: var(--red); }
+.misc__note { margin-top: 22px; font-size: 12.5px; font-weight: 300; line-height: 1.9; }
+
+/* ---------- 页脚：印刷品页角（左下版权 + 右下页码式链接） ---------- */
+.footer {
+  align-items: baseline;
+  padding: 22px 0 44px;
+  font-size: 11px;
+}
+.footer__left { grid-column: 1 / 4; font-weight: 900; }
+.footer__mid { grid-column: 4 / 9; font-weight: 300; opacity: .7; }
+.footer__right { grid-column: 9 / 13; justify-self: end; font-weight: 900; }
+.footer__right a { margin-left: 14px; }
+.footer__top { letter-spacing: .12em; margin-left: 28px !important; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1080px) {
+  /* 封面：标题占满宽度，信息卡移到底部 */
+  .hero__title { grid-column: 2 / 13; }
+  .hero__aside { grid-column: 1 / 13; margin-top: 28px; max-width: 640px; }
+  .hero__down { display: none; }
+  /* 项目行：描述折到名称下方 */
+  .project__row {
+    grid-template-columns: 56px minmax(200px, 1fr) auto 32px;
+    grid-template-areas: 'no name meta toggle' 'no desc desc desc';
+  }
+  /* 经历行：隐藏城市列 */
+  .exp__row { grid-template-columns: 130px 1.2fr 1fr 2fr; }
+  .exp__city { display: none; }
+}
+
+@media (max-width: 760px) {
+  :root { --gap: 12px; }
+  .page { padding: 0 16px; }
+
+  /* 刊头：隐藏中间说明，保留两个页角 */
+  .masthead__sub { display: none; }
+  .masthead__mark { grid-column: 1 / 5; }
+  .masthead__nav { grid-column: 5 / 13; gap: 10px; }
+
+  /* 封面：改为纵向堆叠，字号由 clamp 自适应 */
+  .hero { display: flex; flex-direction: column; padding: 40px 0 56px; }
+  .hero__index { font-size: 2.2rem; }
+  .hero__aside { margin-top: 24px; }
+  .hero__data-row { grid-template-columns: 64px 1fr; }
+  .hero__slogan { margin-top: 28px; font-size: 1.4rem; }
+  .hero__slogan-en { margin-top: 12px; }
+
+  /* 反白横幅：红圆缩小到左下 */
+  .band__inner { grid-column: 1 / -1; }
+  .band__circle { grid-column: 1 / -1; justify-self: start; width: 40px; margin-top: 28px; }
+
+  /* 区块头：三行纵向排布 */
+  .section-head__index { grid-column: 1 / -1; margin-bottom: 18px; font-size: 2.2rem; }
+  .section-head__main { grid-column: 1 / -1; }
+  .section-head__hint { grid-column: 1 / -1; justify-self: start; margin-top: 12px; }
+
+  /* 项目行：三行网格 */
+  .project__row {
+    grid-template-columns: 40px 1fr 28px;
+    grid-template-areas: 'no name toggle' 'no desc desc' 'no meta meta';
+    column-gap: 10px;
+    padding: 18px 0;
+  }
+  .project__detail-inner { margin: 0 0 24px 50px; padding-left: 14px; }
+
+  /* 经历行：两列网格 */
+  .exp__head { display: none; }
+  .exp__row {
+    grid-template-columns: 110px 1fr;
+    grid-template-areas: 'years org' 'years role' 'note note';
+    row-gap: 4px;
+    padding: 16px 0;
+  }
+  .exp__years { grid-area: years; }
+  .exp__org { grid-area: org; }
+  .exp__role { grid-area: role; }
+  .exp__note { grid-area: note; margin-top: 4px; }
+
+  /* 技能 / 兴趣 / 联系：纵向堆叠，列间细线分隔 */
+  .misc__cols { display: flex; flex-direction: column; gap: 0; }
+  .misc__col + .misc__col { border-top: var(--line); padding-top: 24px; margin-top: 24px; }
+
+  /* 页脚：纵向堆叠 */
+  .footer { display: flex; flex-direction: column; gap: 10px; padding: 20px 0 32px; }
+}
+
+/* 用户偏好减弱动效时关闭过渡 */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+  html { scroll-behavior: auto; }
+}
+</style>
+<noscript>
+  <style>
+    /* 无 JS 环境：直接展开全部项目详情，保证内容可读 */
+    .project__detail { grid-template-rows: 1fr; }
+  </style>
+</noscript>
+</head>
+<body id="top">
+<div class="page">
+
+  <!-- 刊头：顶部细黑线下的一条印刷信息。左上刊名 + 右上页码式目录（两个页角链接） -->
+  <header class="masthead">
+    <a class="masthead__mark caps" href="#top">Lin Chuan<sup>®</sup></a>
+    <p class="masthead__sub">独立开发者 / 胶片摄影师 — 杭州</p>
+    <nav class="masthead__nav caps" aria-label="页角目录">
+      <a href="#profile">01 简介</a>
+      <a href="#projects">02 项目</a>
+      <a href="#experience">03 经历</a>
+      <a href="#contact">04 联系</a>
+    </nav>
+  </header>
+
+  <!-- 01 封面：巨字标题（黑 900 / 细 300）+ 大红点 + 数据卡 + 半圆 + 粗箭头 -->
+  <section class="hero section" id="profile">
+    <span class="hero__index outline" aria-hidden="true">01</span>
+    <h1 class="hero__title">林<span class="hero__thin">川</span><span class="hero__dot" aria-hidden="true"></span></h1>
+
+    <aside class="hero__aside">
+      <p class="hero__aside-label caps">Profile — 简介</p>
+      <dl class="hero__data">
+        <div class="hero__data-row"><dt>身份</dt><dd>独立开发者 / 胶片摄影师</dd></div>
+        <div class="hero__data-row"><dt>城市</dt><dd>杭州 · Hangzhou</dd></div>
+        <div class="hero__data-row"><dt>坐标</dt><dd>30.27° N — 120.16° E</dd></div>
+        <div class="hero__data-row"><dt>工龄</dt><dd>2018 — 今</dd></div>
+      </dl>
+      <!-- 半圆几何装饰：纯 SVG 路径，无外部图片 -->
+      <svg class="hero__semi" viewBox="0 0 100 50" aria-hidden="true">
+        <path d="M0 50 A50 50 0 0 1 100 50 Z"/>
+      </svg>
+    </aside>
+
+    <!-- 一句话：细体大字号，红色句号 -->
+    <p class="hero__slogan">白天写代码，<br>晚上拍胶片<span class="red">。</span></p>
+    <p class="hero__slogan-en caps">Code by day · Film by night</p>
+
+    <!-- 粗箭头：指向 02 项目 -->
+    <a class="hero__down" href="#projects" aria-label="向下，查看项目">
+      <svg viewBox="0 0 48 96" aria-hidden="true">
+        <path d="M18 0 H30 V62 H42 L24 96 L6 62 H18 Z"/>
+      </svg>
+    </a>
+  </section>
+
+  <!-- 黑色反白横幅：完整简介 + 右侧红色实心圆 -->
+  <section class="band" aria-label="简介">
+    <div class="band__inner">
+      <p class="band__pre caps">Belief — 信念</p>
+      <p class="band__small">曾在互联网大厂做前端工程师，2023 年辞职成为独立开发者。相信小而美的产品——</p>
+      <p class="band__quote">做给自己用的工具，<br>写给人看的故事。</p>
+    </div>
+    <span class="band__circle" aria-hidden="true"></span>
+  </section>
+
+  <!-- 02 项目：表格化行。hover 整行反色；点击展开详情 -->
+  <section class="section projects" id="projects">
+    <header class="section-head">
+      <span class="section-head__index outline" aria-hidden="true">02</span>
+      <div class="section-head__main">
+        <h2 class="section-head__title">项目</h2>
+        <p class="section-head__en caps">Selected Projects — 2022 / 2025</p>
+      </div>
+      <p class="section-head__hint caps">点击行展开 — Click to expand</p>
+    </header>
+
+    <div class="projects__list">
+
+      <article class="project">
+        <button class="project__row" type="button" aria-expanded="false" aria-controls="detail-01">
+          <span class="project__no">01</span>
+          <span class="project__name">拾光<span class="project__en caps">Shiguang — Film Camera</span></span>
+          <span class="project__desc">模拟 12 种经典胶卷色彩的胶片相机 App</span>
+          <span class="project__meta">iOS · 2024</span>
+          <span class="project__toggle" aria-hidden="true">+</span>
+        </button>
+        <div class="project__detail" id="detail-01" aria-hidden="true">
+          <div class="project__detail-inner">
+            <p>一台装进口袋的胶片机。取景、对焦、按下快门、过片——保留真相机的手感，色彩则模拟 12 种经典胶卷。</p>
+            <p class="project__detail-meta caps">Kodak Gold 200 · Portra 400 · Fujifilm C200 · Ilford HP5 Plus · Cinestill 800T · …</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="project">
+        <button class="project__row" type="button" aria-expanded="false" aria-controls="detail-02">
+          <span class="project__no">02</span>
+          <span class="project__name">码字<span class="project__en caps">Mazi — Markdown Editor</span></span>
+          <span class="project__desc">本地优先的 Markdown 写作工具</span>
+          <span class="project__meta">macOS · 2025</span>
+          <span class="project__toggle" aria-hidden="true">+</span>
+        </button>
+        <div class="project__detail" id="detail-02" aria-hidden="true">
+          <div class="project__detail-inner">
+            <p>数据只存在你自己的设备里：不上云、不登录、不开会员。大纲侧栏、全文搜索、一键导出；深色模式下，它安静得像一块稿纸。</p>
+            <p class="project__detail-meta caps">Local first · Zero cloud · Dark mode</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="project">
+        <button class="project__row" type="button" aria-expanded="false" aria-controls="detail-03">
+          <span class="project__no">03</span>
+          <span class="project__name">岛读<span class="project__en caps">Daodu — Book Notes</span></span>
+          <span class="project__desc">给纸质书做读书笔记的 App</span>
+          <span class="project__meta">iOS · 2023</span>
+          <span class="project__toggle" aria-hidden="true">+</span>
+        </button>
+        <div class="project__detail" id="detail-03" aria-hidden="true">
+          <div class="project__detail-inner">
+            <p>读纸质书时的摘抄本。拍下页码，自动裁边、OCR 成可检索的文字；笔记按书归档成一张张卡片，重读时像回到当年的那个下午。</p>
+            <p class="project__detail-meta caps">OCR · Card archive · Offline</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="project">
+        <button class="project__row" type="button" aria-expanded="false" aria-controls="detail-04">
+          <span class="project__no">04</span>
+          <span class="project__name">午后电台<span class="project__en caps">Afternoon Radio — City Sounds</span></span>
+          <span class="project__desc">收集城市声音的网站</span>
+          <span class="project__meta">Web · 2022</span>
+          <span class="project__toggle" aria-hidden="true">+</span>
+        </button>
+        <div class="project__detail" id="detail-04" aria-hidden="true">
+          <div class="project__detail-inner">
+            <p>一个只收录杭州声音的网站：西湖边的鸟鸣、菜市场的吆喝、雨打在车棚上的声音。戴上耳机，闭上眼睛，你就在杭州。</p>
+            <p class="project__detail-meta caps">Field recordings · Hangzhou</p>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- 03 经历：年份 / 机构 / 职位 / 城市 / 说明，行间细线 -->
+  <section class="section exp" id="experience">
+    <header class="section-head">
+      <span class="section-head__index outline" aria-hidden="true">03</span>
+      <div class="section-head__main">
+        <h2 class="section-head__title">经历</h2>
+        <p class="section-head__en caps">Experience — 2018 / Present</p>
+      </div>
+      <p class="section-head__hint caps">五年大厂 · 三年自由</p>
+    </header>
+
+    <div class="exp__table">
+      <div class="exp__row exp__head caps" aria-hidden="true">
+        <span>年份</span><span>机构</span><span>职位</span><span>城市</span><span>说明</span>
+      </div>
+      <div class="exp__row">
+        <span class="exp__years">2018 — 2023</span>
+        <span class="exp__org">某互联网公司</span>
+        <span class="exp__role">前端工程师</span>
+        <span class="exp__city">杭州</span>
+        <span class="exp__note">负责设计系统与中后台前端；自研组件库服务 40+ 业务线。</span>
+      </div>
+      <div class="exp__row">
+        <span class="exp__years">2023 — 今</span>
+        <span class="exp__org">自己的工作室</span>
+        <span class="exp__role">独立开发者</span>
+        <span class="exp__city">杭州</span>
+        <span class="exp__note">辞职，做自己的产品：白天写代码，晚上拍胶片。</span>
+      </div>
+      <div class="exp__row exp__row--now">
+        <span class="exp__years">现在</span>
+        <span class="exp__org">正在做的事</span>
+        <span class="exp__role">—</span>
+        <span class="exp__city">杭州</span>
+        <span class="exp__note">写「码字」2.0；在杭州寻找适合拍照的旧街区。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 技能 / 兴趣 / 联系：三栏，方块与圆点标记 -->
+  <section class="section misc" id="contact">
+    <header class="section-head">
+      <span class="section-head__index outline" aria-hidden="true">04</span>
+      <div class="section-head__main">
+        <h2 class="section-head__title">技能与联系</h2>
+        <p class="section-head__en caps">Skills &amp; Contact</p>
+      </div>
+      <p class="section-head__hint caps">欢迎来信 — Say Hello</p>
+    </header>
+
+    <div class="misc__cols">
+      <div class="misc__col misc__col--skills">
+        <h3 class="misc__h caps">Skills — 技能</h3>
+        <ul class="misc__list">
+          <li>TypeScript</li>
+          <li>React</li>
+          <li>SwiftUI</li>
+          <li>摄影</li>
+          <li>写作</li>
+        </ul>
+      </div>
+      <div class="misc__col misc__col--interests">
+        <h3 class="misc__h caps">Interests — 兴趣</h3>
+        <ul class="misc__list misc__list--dots">
+          <li>胶片摄影</li>
+          <li>徒步</li>
+          <li>煮咖啡</li>
+          <li>收集旧地图</li>
+        </ul>
+      </div>
+      <div class="misc__col misc__col--contact">
+        <h3 class="misc__h caps">Contact — 联系</h3>
+        <a class="misc__mail" href="mailto:linchuan@example.com">linchuan@example.com</a>
+        <a class="misc__gh" href="https://github.com/linchuan-dev" target="_blank" rel="noopener">github.com/linchuan-dev <span>↗</span></a>
+        <p class="misc__note">欢迎来信聊产品、聊胶片，或者只是打个招呼。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 页脚：左下版权（含邮箱链接）+ 右下页码式链接（像印刷品页角） -->
+  <footer class="footer">
+    <a class="footer__left" href="mailto:linchuan@example.com">© 2026 林川 · Lin Chuan</a>
+    <p class="footer__mid caps">白天写代码，晚上拍胶片 — 杭州</p>
+    <nav class="footer__right caps" aria-label="页码导航">
+      <a href="#profile">01</a>
+      <a href="#projects">02</a>
+      <a href="#experience">03</a>
+      <a href="#contact">04</a>
+      <a class="footer__top" href="#top">№ 07 / 2026 · 顶部 ↑</a>
+    </nav>
+  </footer>
+
+</div>
+
+<script>
+/* 项目行交互：点击展开 / 收起详情（无任何外部依赖） */
+(function () {
+  var projects = document.querySelectorAll('.project');
+  projects.forEach(function (project) {
+    var row = project.querySelector('.project__row');
+    var detail = project.querySelector('.project__detail');
+    row.addEventListener('click', function () {
+      var open = !project.classList.contains('is-open');
+      project.classList.toggle('is-open', open);
+      row.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (detail) { detail.setAttribute('aria-hidden', open ? 'false' : 'true'); }
+    });
+  });
+})();
+</script>
+</body>
+</html>

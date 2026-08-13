@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="林川的个人网站：独立开发者与胶片摄影师。白天写代码，晚上拍胶片。">
+<title>林川 LINCHUAN — 独立开发者 / 胶片摄影师</title>
+<style>
+/* ================================================================
+   01 · 基础与设计变量
+   —— 白/黑主调 + 纸白底色 + 四个项目点缀色（夕阳橙/青黛/墨绿/胶片棕）
+   ================================================================ */
+:root {
+  --bg: #f6f4ef;            /* 纸白底 */
+  --ink: #111111;           /* 墨黑 */
+  --muted: #6f6c66;         /* 细字灰 */
+  --line: rgba(17, 17, 17, .16);
+  --accent: #e2571b;        /* 全局点缀：夕阳橙 */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-serif: Georgia, "Times New Roman", "Songti SC", "STSong", serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; } /* 平滑滚动 */
+html, body {
+  overflow-x: hidden; /* 允许大标题视觉越界，但不出现横向滚动条 */
+  overflow-x: clip;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--accent); color: #fff; }
+a { color: inherit; text-decoration: none; }
+ul { list-style: none; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+/* ================================================================
+   02 · 排版工具类
+   —— 超大字号 clamp(4rem, 14vw, 13rem)、描边字、渐变字、细字
+   ================================================================ */
+.title-xl {
+  font-size: clamp(4rem, 14vw, 13rem);
+  line-height: .95;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.text-stroke {           /* 描边字：透明填充 + 描边 */
+  color: transparent;
+  -webkit-text-stroke: 2px var(--ink);
+}
+.text-stroke-thick {
+  color: transparent;
+  -webkit-text-stroke: 2.5px var(--ink);
+}
+.thin { font-weight: 300; color: var(--muted); }
+.en { font-family: var(--font-serif); font-style: italic; letter-spacing: .04em; }
+
+/* 章节小标签：关于 — ABOUT */
+.sec-label {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: .8rem;
+  letter-spacing: .35em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: clamp(2rem, 5vh, 4rem);
+}
+.sec-label::before { content: ''; width: 2.8rem; height: 1px; background: var(--ink); }
+.sec-label .en { letter-spacing: .2em; }
+
+/* ================================================================
+   03 · 滚动渐显动画（由 IntersectionObserver 触发 .is-visible）
+   ================================================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(56px); /* 上移渐显：从下方 56px 上滑 + 淡入 */
+  transition: opacity .9s ease,
+              transform 1s cubic-bezier(.16, 1, .3, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+/* ================================================================
+   04 · 胶片颗粒覆盖层（内联 SVG feTurbulence，零外部资源）
+   ================================================================ */
+.grain {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 70;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: .07;
+}
+
+/* ================================================================
+   05 · 顶部扫描进度条（橙色细线，模拟胶片计数器）
+   ================================================================ */
+.progress {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 2px;
+  z-index: 60;
+  pointer-events: none;
+}
+.progress-bar {
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  will-change: transform;
+}
+
+/* ================================================================
+   06 · 固定导航：左上 logo「林川 LINCHUAN」+ 右上 3 个小链接
+   —— mix-blend-mode: difference 让文字随背景自动反色
+   ================================================================ */
+.site-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.4rem clamp(1.25rem, 5vw, 6rem);
+  mix-blend-mode: difference;
+  color: #fff; /* 在纸白底上经 difference 显示为黑 */
+}
+.logo { font-weight: 800; font-size: 1.05rem; letter-spacing: .12em; }
+.logo-en {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  margin-left: .6rem;
+  font-size: .85em;
+  letter-spacing: .28em;
+  opacity: .85;
+}
+.nav-links { display: flex; gap: 2.2rem; font-size: .88rem; letter-spacing: .18em; }
+.nav-links a { position: relative; padding: .2rem 0; }
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 100%; height: 1px;
+  background: #fff;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform .45s cubic-bezier(.16, 1, .3, 1);
+}
+.nav-links a:hover::after { transform: scaleX(1); transform-origin: left; }
+
+/* ================================================================
+   07 · 全屏区块基础
+   ================================================================ */
+section {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  padding: clamp(4.5rem, 6vw, 7rem) clamp(1.25rem, 5vw, 6rem);
+}
+
+/* ================================================================
+   08 · HERO —— 超大描边字「林」+ 渐变字「川」，取景器角标
+   ================================================================ */
+.hero {
+  justify-content: space-between;
+  padding: clamp(6rem, 12vh, 9rem) clamp(1.25rem, 5vw, 6rem) clamp(2.5rem, 6vh, 4rem);
+}
+.hero-kicker {
+  align-self: flex-start;
+  font-size: .85rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.kicker-en { font-family: var(--font-serif); font-style: italic; text-transform: none; letter-spacing: .12em; opacity: .8; }
+
+.hero-mid { position: relative; text-align: center; align-self: center; padding: 2.5rem 3.5rem; }
+/* 取景器四角标记 —— 呼应胶片摄影师身份 */
+.hero-mid::before, .hero-mid::after {
+  content: '';
+  position: absolute;
+  width: 2.2rem; height: 2.2rem;
+  border: 2px solid var(--ink);
+  opacity: .75;
+}
+.hero-mid::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.hero-mid::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+.hero-title {
+  font-size: clamp(4rem, 14vw, 13rem);
+  line-height: .95;
+  font-weight: 800;
+  letter-spacing: 0;
+  animation: heroIn 1.2s cubic-bezier(.16, 1, .3, 1) .05s backwards; /* 入场动画，fill=backwards 以免覆盖 JS 视差 */
+  will-change: transform, opacity;
+}
+@keyframes heroIn {
+  from { opacity: 0; transform: translateY(64px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-title .stroke { color: transparent; -webkit-text-stroke: 2.5px var(--ink); }
+.hero-title .grad { /* 渐变字：川 = 一条夕阳色的河 */
+  background: linear-gradient(120deg, #ffc46b 0%, #ff8c42 45%, #e2571b 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tagline { margin-top: 1.4rem; font-size: clamp(1.2rem, 2.4vw, 1.9rem); font-weight: 300; letter-spacing: .08em; }
+.tagline-en { margin-top: .4rem; font-family: var(--font-serif); font-style: italic; color: var(--muted); letter-spacing: .22em; font-size: .95rem; }
+
+.hero-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  font-size: .82rem;
+  letter-spacing: .18em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.hero-scroll { display: flex; align-items: center; gap: .9rem; white-space: nowrap; }
+/* 向下滚动的「胶片走带」指示线 */
+.scroll-line {
+  position: relative;
+  display: inline-block;
+  width: 1px; height: 3.2rem;
+  background: var(--ink);
+  overflow: hidden;
+}
+.scroll-line::after {
+  content: '';
+  position: absolute;
+  left: 0; top: -50%;
+  width: 100%; height: 50%;
+  background: var(--accent);
+  animation: drop 1.8s ease-in-out infinite;
+}
+@keyframes drop { 0% { top: -50%; } 100% { top: 110%; } }
+
+/* ================================================================
+   09 · 关于 —— 大字号宣言 + 细字正文 + 档案清单
+   ================================================================ */
+.about-statement p {
+  font-size: clamp(2.2rem, 6.4vw, 5.8rem);
+  font-weight: 800;
+  line-height: 1.18;
+}
+.stroke-lg { color: transparent; -webkit-text-stroke: 2px var(--ink); }
+.grad-text { /* 渐变字：从墨黑走向夕阳橙 */
+  background: linear-gradient(115deg, var(--ink) 35%, #e2571b 120%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.about-en { margin-top: 1.4rem; font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: clamp(1.5rem, 3.6vw, 3rem); color: var(--muted); }
+.about-sub { margin-top: .8rem; font-size: clamp(1.2rem, 2.6vw, 2.2rem); font-weight: 300; }
+.about-grid {
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap: clamp(2rem, 5vw, 5rem);
+  margin-top: clamp(3rem, 8vh, 6rem);
+  align-items: start;
+}
+.about-bio { font-size: 1.05rem; max-width: 40em; }
+.about-facts { border-top: 1px solid var(--line); }
+.about-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: .9rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: .95rem;
+}
+.about-facts dt { color: var(--muted); letter-spacing: .2em; font-weight: 300; }
+.about-facts dd { font-weight: 600; text-align: right; }
+
+/* ================================================================
+   10 · 作品章节头 —— 巨型描边字「作品」
+   ================================================================ */
+.works-head { min-height: 85vh; }
+.works-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; }
+.works-side { text-align: right; }
+.works-side .en { font-size: clamp(1.2rem, 2.6vw, 2.1rem); line-height: 1.35; color: var(--muted); }
+.works-side .thin { margin-top: 1rem; letter-spacing: .3em; font-size: .8rem; }
+
+/* ================================================================
+   11 · 项目区块 —— 全屏「摄影作品」叙事
+   —— 背景 = 每个项目专属色系的 CSS 渐变「照片」
+   —— 滚动进入：clip-path 遮罩揭开（模拟显影）
+   —— hover：背景浮现增强 + 文字反白
+   ================================================================ */
+.project { overflow: hidden; } /* 裁剪背景揭开动画 */
+
+/* 每个项目的点缀色（用于编号、年份） */
+.p1 { --accent: #e2571b; } /* 夕阳橙 */
+.p2 { --accent: #2f4858; } /* 青黛 */
+.p3 { --accent: #1f4d3a; } /* 墨绿 */
+.p4 { --accent: #8a5a33; } /* 胶片棕 */
+
+/* 背景「照片」：初始被遮罩盖住，滚动进入后揭开 */
+.project-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  clip-path: inset(0 100% 0 0); /* 从左向右揭开 */
+  transition: clip-path 1.3s cubic-bezier(.77, 0, .18, 1),
+              opacity 1.2s ease,
+              transform 1.2s cubic-bezier(.16, 1, .3, 1),
+              filter .6s ease;
+  box-shadow: inset 0 0 16vmax rgba(0, 0, 0, .55); /* 暗角，模拟照片边缘 */
+}
+.project.rev-r .project-bg { clip-path: inset(0 0 0 100%); } /* 偶数项目从右向左揭开 */
+.project.in .project-bg { opacity: .28; clip-path: inset(0 0 0 0); }
+.project:hover .project-bg { opacity: .94; transform: scale(1.05); filter: saturate(1.25) contrast(1.05); }
+
+/* 01 拾光 —— 夕阳橙：日落 + 太阳光晕 */
+.p1 .project-bg {
+  background:
+    radial-gradient(circle at 68% 32%, rgba(255, 236, 195, .95) 0 8%, transparent 8.6%),
+    radial-gradient(circle at 68% 32%, rgba(255, 205, 130, .38) 0 17%, transparent 17.6%),
+    linear-gradient(160deg, #ff8c42 0%, #e2571b 45%, #8c2f14 80%, #58190b 100%);
+}
+/* 02 码字 —— 青黛：冷调湖面 + 月光 */
+.p2 .project-bg {
+  background:
+    radial-gradient(circle at 32% 24%, rgba(216, 234, 246, .9) 0 6%, transparent 6.6%),
+    radial-gradient(circle at 32% 24%, rgba(160, 200, 225, .25) 0 14%, transparent 14.6%),
+    linear-gradient(168deg, #3c5c74 0%, #2f4858 42%, #1b2f3d 74%, #0d1820 100%);
+}
+/* 03 岛读 —— 墨绿：森林纵深 + 一点微光 */
+.p3 .project-bg {
+  background:
+    radial-gradient(ellipse at 76% 74%, rgba(146, 210, 165, .4) 0%, transparent 46%),
+    radial-gradient(circle at 24% 30%, rgba(255, 244, 214, .28) 0 5%, transparent 5.6%),
+    linear-gradient(155deg, #2e5c44 0%, #1f4d3a 46%, #143325 76%, #0a1c13 100%);
+}
+/* 04 午后电台 —— 胶片棕：怀旧暖棕 + 旧照片光斑 */
+.p4 .project-bg {
+  background:
+    radial-gradient(circle at 62% 64%, rgba(255, 218, 168, .55) 0 10%, transparent 10.8%),
+    radial-gradient(circle at 30% 20%, rgba(120, 78, 40, .5) 0 30%, transparent 31%),
+    linear-gradient(165deg, #b07a4a 0%, #8a5a33 46%, #57371d 78%, #33200f 100%);
+}
+
+.project-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+}
+/* 大号编号 01/02/03 + 英文副标 */
+.project-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: clamp(1.2rem, 3vh, 2.4rem);
+}
+.project-index {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(3rem, 9vw, 7rem);
+  line-height: 1;
+  color: var(--accent);
+}
+.project-en { letter-spacing: .34em; font-size: .8rem; color: var(--muted); text-align: right; }
+/* 项目名称：默认描边空心字，hover 反白实心 */
+.project-title {
+  font-size: clamp(4rem, 14vw, 13rem);
+  font-weight: 800;
+  line-height: .95;
+  color: transparent;
+  -webkit-text-stroke: 2px var(--ink);
+  transition: opacity .9s ease,
+              transform 1s cubic-bezier(.16, 1, .3, 1),
+              color .5s ease,
+              -webkit-text-stroke-color .5s ease;
+}
+.project-title.reveal { /* 渐显与 hover 共用一条 transition */
+  transition: opacity .9s ease,
+              transform 1s cubic-bezier(.16, 1, .3, 1),
+              color .5s ease,
+              -webkit-text-stroke-color .5s ease;
+}
+.project:hover .project-title { color: #fff; -webkit-text-stroke-color: #fff; transform: translateX(1.5%); }
+.project-desc { margin-top: 1.2rem; font-size: clamp(1.15rem, 2.2vw, 1.7rem); font-weight: 300; transition: color .5s ease; }
+.project-sub { max-width: 34em; margin-top: .8rem; font-size: 1rem; transition: color .5s ease; }
+.project:hover .project-desc { color: #fff; }
+.project:hover .project-sub { color: rgba(255, 255, 255, .85); }
+/* hover 浮现的「胶片 EXIF 元数据」胶囊条 */
+.project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .8rem;
+  margin-top: 2.2rem;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .6s ease .1s, transform .6s cubic-bezier(.16, 1, .3, 1) .1s;
+}
+.project:hover .project-meta { opacity: 1; transform: translateY(0); }
+.project-meta span {
+  border: 1px solid rgba(17, 17, 17, .4);
+  border-radius: 999px;
+  padding: .5rem 1.1rem;
+  font-size: .78rem;
+  letter-spacing: .22em;
+  transition: border-color .5s ease, color .5s ease;
+}
+.project:hover .project-meta span { border-color: rgba(255, 255, 255, .65); color: #fff; }
+
+/* ================================================================
+   12 · 经历 —— 超大描边年份 + 细字叙事，hover 右移
+   ================================================================ */
+.exp-quote {
+  font-size: clamp(1.2rem, 2.4vw, 1.9rem);
+  font-weight: 300;
+  margin-bottom: clamp(2rem, 5vh, 4rem);
+}
+.exp-quote .en { color: var(--muted); font-size: .6em; margin-left: 1rem; letter-spacing: .2em; }
+.exp-row {
+  display: grid;
+  grid-template-columns: minmax(10rem, .9fr) 1.1fr;
+  gap: clamp(1.5rem, 4vw, 4rem);
+  align-items: baseline;
+  padding: clamp(1.6rem, 4vh, 3rem) 0;
+  border-top: 1px solid var(--line);
+  transition: opacity .9s ease, transform .9s cubic-bezier(.16, 1, .3, 1);
+}
+.exp-row:last-child { border-bottom: 1px solid var(--line); }
+.exp-row:hover { transform: translateX(1.2rem); }
+.exp-year {
+  font-size: clamp(2.8rem, 8vw, 7rem);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--ink);
+  transition: color .5s ease, -webkit-text-stroke-color .5s ease;
+}
+.exp-row:hover .exp-year { color: var(--accent); -webkit-text-stroke-color: var(--accent); }
+.exp-title { font-size: clamp(1.5rem, 3.4vw, 2.8rem); font-weight: 800; }
+.exp-title .en { font-size: .5em; color: var(--muted); margin-left: .8rem; font-weight: 400; }
+.exp-now {
+  display: inline-block;
+  margin-left: 1rem;
+  vertical-align: .3em;
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .2em;
+  color: var(--accent);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: .2rem .8rem;
+}
+.exp-desc { margin-top: .6rem; font-weight: 600; letter-spacing: .06em; }
+.exp-row .thin { margin-top: .5rem; max-width: 36em; }
+
+/* ================================================================
+   13 · 技能 —— 大字技能列表（奇偶描边/实心交替）+ 兴趣胶囊
+   ================================================================ */
+.skill-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2rem;
+  font-size: clamp(2.2rem, 7.5vw, 6.2rem);
+  font-weight: 800;
+  line-height: 1.25;
+  cursor: default;
+  transition: opacity .9s ease,
+              transform 1s cubic-bezier(.16, 1, .3, 1),
+              color .45s ease,
+              -webkit-text-stroke-color .45s ease;
+}
+.skill-list li:nth-child(odd) { /* 奇数项描边空心 */
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--ink);
+}
+.skill-no {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: .22em;
+  color: var(--muted);
+  letter-spacing: .1em;
+  -webkit-text-stroke: 0;
+  font-weight: 400;
+}
+/* 每个技能 hover 各有其色 */
+.skill-list li:nth-child(1):hover { color: #e2571b; -webkit-text-stroke-color: #e2571b; transform: translateX(1.4rem); }
+.skill-list li:nth-child(2):hover { color: #2f4858; -webkit-text-stroke-color: #2f4858; transform: translateX(1.4rem); }
+.skill-list li:nth-child(3):hover { color: #1f4d3a; -webkit-text-stroke-color: #1f4d3a; transform: translateX(1.4rem); }
+.skill-list li:nth-child(4):hover { color: #b07a4a; -webkit-text-stroke-color: #b07a4a; transform: translateX(1.4rem); }
+.skill-list li:nth-child(5):hover { color: var(--ink); -webkit-text-stroke-color: var(--ink); transform: translateX(1.4rem); text-decoration: underline; text-underline-offset: .18em; }
+
+.interest-block { margin-top: clamp(3rem, 8vh, 5rem); }
+.interest-block .sec-label { margin-bottom: 0; }
+.interest-list { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.4rem; }
+.interest-list li {
+  border: 1px solid rgba(17, 17, 17, .45);
+  border-radius: 999px;
+  padding: .65rem 1.5rem;
+  font-size: .95rem;
+  letter-spacing: .1em;
+  cursor: default;
+  transition: background .45s ease, color .45s ease, border-color .45s ease, transform .45s ease;
+}
+.interest-list li:hover { transform: translateY(-4px); color: #fff; }
+.interest-list li:nth-child(1):hover { background: #e2571b; border-color: #e2571b; }
+.interest-list li:nth-child(2):hover { background: #2f4858; border-color: #2f4858; }
+.interest-list li:nth-child(3):hover { background: #1f4d3a; border-color: #1f4d3a; }
+.interest-list li:nth-child(4):hover { background: #8a5a33; border-color: #8a5a33; }
+
+/* ================================================================
+   14 · 联系 —— 巨型邮箱 + 下划线生长动画
+   ================================================================ */
+.contact-title { font-size: clamp(2.4rem, 6vw, 5.4rem); font-weight: 800; line-height: 1.15; }
+.contact-dot { color: var(--accent); }
+.mail {
+  display: inline-block;
+  margin-top: 2.4rem;
+  font-size: clamp(1.5rem, 5vw, 4.2rem);
+  font-weight: 800;
+  letter-spacing: -.02em;
+  padding-bottom: .2em;
+  /* 下划线从左向右「生长」 */
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 2px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: opacity .9s ease,
+              transform 1s cubic-bezier(.16, 1, .3, 1),
+              background-size .55s cubic-bezier(.16, 1, .3, 1),
+              color .4s ease;
+}
+.mail:hover { background-size: 100% 2px; color: var(--accent); }
+.gh-line { margin-top: 2rem; font-size: 1.1rem; letter-spacing: .08em; }
+.gh-line a { border-bottom: 1px solid var(--line); padding-bottom: .2rem; transition: border-color .4s ease, color .4s ease; }
+.gh-line a:hover { border-color: var(--ink); }
+.contact-note { margin-top: 2.4rem; max-width: 32em; }
+.contact-coord { margin-top: 3rem; font-size: .8rem; letter-spacing: .3em; }
+
+/* ================================================================
+   15 · 底部跑马灯大字滚动条（纯 CSS 动画，双段无缝循环）
+   ================================================================ */
+.site-foot { background: #0e0e0e; color: #fff; }
+.marquee {
+  overflow: hidden;
+  padding: clamp(1.6rem, 4vh, 3rem) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .14);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: mq 26s linear infinite;
+  will-change: transform;
+}
+.marquee:hover .marquee-track { animation-play-state: paused; } /* hover 暂停 */
+.marquee-seg {
+  display: flex;
+  align-items: center;
+  gap: 2.4rem;
+  padding-right: 2.4rem;
+  white-space: nowrap;
+  font-size: clamp(2.2rem, 7vw, 6rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.mq-stroke { /* 描边英文，与实心中文交替 */
+  color: transparent;
+  -webkit-text-stroke: 1.5px #fff;
+  font-family: var(--font-serif);
+  font-style: italic;
+  letter-spacing: .04em;
+}
+.mq-gap { color: var(--accent); font-weight: 400; }
+@keyframes mq { to { transform: translateX(-50%); } } /* 两段相同内容，位移一半即无缝 */
+
+.foot-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  flex-wrap: wrap;
+  padding: 1.4rem clamp(1.25rem, 5vw, 6rem);
+  font-size: .78rem;
+  letter-spacing: .16em;
+  color: rgba(255, 255, 255, .55);
+}
+
+/* ================================================================
+   16 · 响应式：移动端不崩
+   ================================================================ */
+@media (max-width: 820px) {
+  .site-nav { padding: 1rem 1.25rem; }
+  .nav-links { gap: 1.4rem; font-size: .8rem; }
+  .hero-title { font-size: clamp(4rem, 24vw, 8rem); }
+  .hero-mid { padding: 1.8rem 2.2rem; }
+  .hero-foot { flex-direction: column; align-items: flex-start; gap: 1.2rem; }
+  .about-grid { grid-template-columns: 1fr; }
+  .about-facts dd { text-align: left; }
+  .works-row { flex-direction: column; align-items: flex-start; }
+  .works-side { text-align: left; }
+  .project-title { font-size: clamp(3.2rem, 19vw, 7rem); }
+  .project-head { flex-direction: column; align-items: flex-start; gap: .6rem; }
+  .project-en { text-align: left; }
+  .exp-row { grid-template-columns: 1fr; gap: .8rem; }
+  .exp-year { font-size: clamp(2.4rem, 15vw, 5rem); }
+  .skill-list li { font-size: clamp(1.9rem, 11vw, 3.8rem); }
+  .mail { font-size: clamp(1.35rem, 7vw, 2.6rem); word-break: break-all; }
+  .marquee-seg { font-size: clamp(1.7rem, 8.5vw, 3.6rem); }
+}
+/* 触屏设备：hover 不可用，元数据胶囊常显 */
+@media (hover: none) {
+  .project-meta { opacity: 1; transform: translateY(0); }
+}
+/* 减少动态偏好：关闭动画 */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .hero-title { animation: none; }
+  .marquee-track { animation: none; }
+  .scroll-line::after { animation: none; }
+  .project-bg { transition: none; }
+}
+</style>
+<noscript>
+<style>
+/* 无 JS 时兜底：内容全部可见 */
+.reveal { opacity: 1; transform: none; }
+.project-bg { opacity: .28; clip-path: none; }
+.project-meta { opacity: 1; transform: none; }
+</style>
+</noscript>
+</head>
+<body>
+
+<!-- 胶片颗粒覆盖层：内联 SVG feTurbulence 生成噪点，零外部资源 -->
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grainFilter">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/>
+    <feColorMatrix type="saturate" values="0"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grainFilter)"/>
+</svg>
+
+<!-- 顶部扫描进度条 -->
+<div class="progress" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+
+<!-- 固定导航：左上 logo + 右上 3 个小链接 -->
+<header class="site-nav">
+  <a class="logo" href="#top">林川<span class="logo-en">LINCHUAN</span></a>
+  <nav class="nav-links" aria-label="主导航">
+    <a href="#about">关于</a>
+    <a href="#work">项目</a>
+    <a href="#contact">联系</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ==================== HERO ==================== -->
+  <section class="hero" id="top">
+    <p class="hero-kicker reveal">独立开发者 / 胶片摄影师<span class="kicker-en"> — INDEPENDENT DEVELOPER × FILM PHOTOGRAPHER</span></p>
+
+    <div class="hero-mid">
+      <h1 class="hero-title" id="heroTitle"><span class="stroke">林</span><span class="grad">川</span></h1>
+      <div class="hero-line">
+        <p class="tagline reveal" style="transition-delay:.1s">白天写代码，晚上拍胶片。</p>
+        <p class="tagline-en reveal" style="transition-delay:.2s">CODE BY DAY. FILM BY NIGHT.</p>
+      </div>
+    </div>
+
+    <div class="hero-foot">
+      <p class="hero-loc reveal" style="transition-delay:.3s">杭州 HANGZHOU · 30.25°N 120.15°E · <span id="clock">--:--</span></p>
+      <p class="hero-scroll reveal" style="transition-delay:.4s">向下滚动<span class="scroll-line" aria-hidden="true"></span>SCROLL</p>
+    </div>
+  </section>
+
+  <!-- ==================== 关于 ==================== -->
+  <section class="about" id="about">
+    <div class="sec-label reveal">关于 <span class="en">— ABOUT</span></div>
+
+    <div class="about-statement">
+      <p class="reveal"><span class="stroke-lg">相信</span> <span class="grad-text">小而美的产品</span></p>
+      <p class="about-en reveal" style="transition-delay:.12s">build for myself, write for people.</p>
+      <p class="about-sub reveal" style="transition-delay:.2s">做给自己用的工具，写给人看的故事。</p>
+    </div>
+
+    <div class="about-grid">
+      <p class="about-bio thin reveal">曾在互联网大厂做前端工程师，2023 年辞职成为独立开发者。相信小而美的产品：做给自己用的工具，写给人看的故事。白天写 TypeScript，晚上背着相机在杭州街头按快门。产品很小，用户不多，但每一个细节都自己说了算。</p>
+      <dl class="about-facts reveal" style="transition-delay:.15s">
+        <div><dt>坐标</dt><dd>杭州 HANGZHOU</dd></div>
+        <div><dt>身份</dt><dd>独立开发者 × 胶片摄影师</dd></div>
+        <div><dt>日常</dt><dd>代码 · 胶卷 · 咖啡 · 旧地图</dd></div>
+        <div><dt>状态</dt><dd>接受合作 — 聊聊产品</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ==================== 作品章节头 ==================== -->
+  <section class="works-head" id="work">
+    <div class="sec-label reveal">作品 <span class="en">— SELECTED WORKS</span></div>
+    <div class="works-row">
+      <h2 class="title-xl text-stroke reveal">作品</h2>
+      <div class="works-side reveal" style="transition-delay:.15s">
+        <p class="en">four things I built<br>for myself</p>
+        <p class="thin">04 PROJECTS — 2023 → 2025</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 项目 01 · 拾光（夕阳橙） ==================== -->
+  <section class="project p1" id="project-01">
+    <div class="project-bg" aria-hidden="true"></div>
+    <div class="project-inner">
+      <div class="project-head reveal">
+        <span class="project-index">01</span>
+        <span class="project-en">FILM CAMERA APP — iOS · 2023</span>
+      </div>
+      <h2 class="project-title reveal" style="transition-delay:.1s">拾光</h2>
+      <p class="project-desc reveal" style="transition-delay:.18s">模拟 12 种经典胶卷色彩的胶片相机 App</p>
+      <p class="project-sub thin reveal" style="transition-delay:.26s">把 Portra 400 的暖、Velvia 50 的艳装进 iPhone 的取景框。按下快门，等三秒「显影」。</p>
+      <div class="project-meta" aria-hidden="true">
+        <span>KODAK PORTRA 400</span><span>F/1.8</span><span>1/125S</span><span>EST. 2023</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 项目 02 · 码字（青黛） ==================== -->
+  <section class="project p2 rev-r" id="project-02">
+    <div class="project-bg" aria-hidden="true"></div>
+    <div class="project-inner">
+      <div class="project-head reveal">
+        <span class="project-index">02</span>
+        <span class="project-en">MARKDOWN WRITER — LOCAL FIRST · 2024</span>
+      </div>
+      <h2 class="project-title reveal" style="transition-delay:.1s">码字</h2>
+      <p class="project-desc reveal" style="transition-delay:.18s">本地优先的 Markdown 写作工具</p>
+      <p class="project-sub thin reveal" style="transition-delay:.26s">所有文字都躺在你自己的硬盘里。离线、纯文本、十年后依然能打开。</p>
+      <div class="project-meta" aria-hidden="true">
+        <span>PLAIN TEXT</span><span>OFFLINE</span><span>0 TRACKER</span><span>EST. 2024</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 项目 03 · 岛读（墨绿） ==================== -->
+  <section class="project p3" id="project-03">
+    <div class="project-bg" aria-hidden="true"></div>
+    <div class="project-inner">
+      <div class="project-head reveal">
+        <span class="project-index">03</span>
+        <span class="project-en">READING NOTES — FOR PAPER BOOKS · 2024</span>
+      </div>
+      <h2 class="project-title reveal" style="transition-delay:.1s">岛读</h2>
+      <p class="project-desc reveal" style="transition-delay:.18s">给纸质书做读书笔记的 App</p>
+      <p class="project-sub thin reveal" style="transition-delay:.26s">翻到哪一页，就在哪一页折角。给纸质书一点数字时代的温柔。</p>
+      <div class="project-meta" aria-hidden="true">
+        <span>PAPER FIRST</span><span>OCR</span><span>PRIVATE</span><span>EST. 2024</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 项目 04 · 午后电台（胶片棕） ==================== -->
+  <section class="project p4 rev-r" id="project-04">
+    <div class="project-bg" aria-hidden="true"></div>
+    <div class="project-inner">
+      <div class="project-head reveal">
+        <span class="project-index">04</span>
+        <span class="project-en">CITY SOUNDS — FIELD RECORDING · 2025</span>
+      </div>
+      <h2 class="project-title reveal" style="transition-delay:.1s">午后电台</h2>
+      <p class="project-desc reveal" style="transition-delay:.18s">收集城市声音的网站</p>
+      <p class="project-sub thin reveal" style="transition-delay:.26s">西湖边的雨、菜场的吆喝、末班地铁的报站——杭州的午后，可以听。</p>
+      <div class="project-meta" aria-hidden="true">
+        <span>AMBIENT</span><span>FIELD REC</span><span>OPEN SOURCE</span><span>EST. 2025</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 经历 ==================== -->
+  <section class="experience" id="experience">
+    <div class="sec-label reveal">经历 <span class="en">— EXPERIENCE</span></div>
+    <p class="exp-quote reveal">把路走窄一点，反而走得更远。<span class="en">walk a narrower path.</span></p>
+
+    <div class="exp-row reveal">
+      <div class="exp-year">2023—</div>
+      <div class="exp-info">
+        <h3 class="exp-title">独立开发者<span class="exp-now">至今</span><span class="en">Independent Developer</span></h3>
+        <p class="exp-desc">拾光 · 码字 · 岛读 · 午后电台</p>
+        <p class="thin">离开大厂，把自己还给自己。产品很小，用户很少，但每一个都先做给自己用。</p>
+      </div>
+    </div>
+
+    <div class="exp-row reveal" style="transition-delay:.12s">
+      <div class="exp-year">2018—23</div>
+      <div class="exp-info">
+        <h3 class="exp-title">某互联网公司 · 前端工程师<span class="en">Frontend Engineer</span></h3>
+        <p class="thin">写组件，修线上，带新人，和产品经理 battle。攒下了手艺，也攒下了「想做自己的产品」的念头。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 技能 + 兴趣 ==================== -->
+  <section class="skills" id="skills">
+    <div class="sec-label reveal">技能 <span class="en">— SKILLS</span></div>
+    <ul class="skill-list">
+      <li class="reveal"><span class="skill-no">01</span>TypeScript</li>
+      <li class="reveal" style="transition-delay:.08s"><span class="skill-no">02</span>React</li>
+      <li class="reveal" style="transition-delay:.16s"><span class="skill-no">03</span>SwiftUI</li>
+      <li class="reveal" style="transition-delay:.24s"><span class="skill-no">04</span>摄影</li>
+      <li class="reveal" style="transition-delay:.32s"><span class="skill-no">05</span>写作</li>
+    </ul>
+
+    <div class="interest-block reveal" style="transition-delay:.1s">
+      <div class="sec-label">兴趣 <span class="en">— OFF HOURS</span></div>
+      <ul class="interest-list">
+        <li>胶片摄影</li>
+        <li>徒步</li>
+        <li>煮咖啡</li>
+        <li>收集旧地图</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ==================== 联系 ==================== -->
+  <section class="contact" id="contact">
+    <div class="sec-label reveal">联系 <span class="en">— CONTACT</span></div>
+    <h2 class="contact-title reveal">写封信给我<span class="contact-dot">。</span></h2>
+    <a class="mail reveal" href="mailto:linchuan@example.com" style="transition-delay:.15s">linchuan@example.com</a>
+    <p class="gh-line reveal" style="transition-delay:.25s"><a href="https://github.com/linchuan-dev" target="_blank" rel="noopener">github.com/linchuan-dev ↗</a></p>
+    <p class="contact-note thin reveal" style="transition-delay:.3s">坐标杭州。欢迎请我喝咖啡，聊产品、聊胶卷、聊旧地图。</p>
+    <p class="contact-coord thin reveal" style="transition-delay:.4s">30.25°N / 120.15°E — HANGZHOU, CHINA</p>
+  </section>
+
+</main>
+
+<!-- ==================== 底部跑马灯大字滚动条 ==================== -->
+<footer class="site-foot">
+  <div class="marquee" aria-label="滚动标语">
+    <div class="marquee-track">
+      <div class="marquee-seg">
+        <span>白天写代码，晚上拍胶片</span>
+        <span class="mq-gap">✦</span>
+        <span class="mq-stroke">Code by Day, Film by Night</span>
+        <span class="mq-gap">✦</span>
+        <span>杭州 HANGZHOU</span>
+        <span class="mq-gap">✦</span>
+      </div>
+      <!-- 第二段与第一段完全一致，用于 translateX(-50%) 无缝循环 -->
+      <div class="marquee-seg" aria-hidden="true">
+        <span>白天写代码，晚上拍胶片</span>
+        <span class="mq-gap">✦</span>
+        <span class="mq-stroke">Code by Day, Film by Night</span>
+        <span class="mq-gap">✦</span>
+        <span>杭州 HANGZHOU</span>
+        <span class="mq-gap">✦</span>
+      </div>
+    </div>
+  </div>
+  <div class="foot-note">
+    <span>© 2026 林川 LINCHUAN</span>
+    <span>手写 HTML / CSS / JS — 零外部资源 · 系统字体</span>
+    <span>№10 — GALLERY EDITION · MADE IN HANGZHOU</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 滚动进度条 + Hero 视差/淡出 ---------- */
+  var progressBar = document.getElementById('progressBar');
+  var heroTitle = document.getElementById('heroTitle');
+  var ticking = false;
+
+  function onScroll() {
+    // 顶部橙色进度线：已滚动比例
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var p = max > 0 ? window.scrollY / max : 0;
+    if (progressBar) progressBar.style.transform = 'scaleX(' + p + ')';
+
+    // Hero 大标题：随滚动下移 + 淡出
+    if (heroTitle && !prefersReduced) {
+      heroTitle.style.transform = 'translateY(' + (window.scrollY * 0.3) + 'px)';
+      heroTitle.style.opacity = Math.max(0, 1 - window.scrollY / 720);
+    }
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function () {
+    if (!ticking) {
+      window.requestAnimationFrame(onScroll); // rAF 节流
+      ticking = true;
+    }
+  }, { passive: true });
+  onScroll();
+
+  /* ---------- 实时时钟（相机 EXIF 风格时间戳） ---------- */
+  var clock = document.getElementById('clock');
+  function tick() {
+    if (clock) clock.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  }
+  tick();
+  setInterval(tick, 60000);
+
+  /* ---------- IntersectionObserver：渐显 + 项目背景显影 ---------- */
+  var revealEls = document.querySelectorAll('.reveal');
+  var projects = document.querySelectorAll('.project');
+
+  if ('IntersectionObserver' in window) {
+    // 标题/文字上移渐显
+    var revealIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          revealIO.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.18, rootMargin: '0px 0px -6% 0px' });
+    revealEls.forEach(function (el) { revealIO.observe(el); });
+
+    // 项目区块进入视口 → 背景遮罩揭开（显影）
+    var projIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          projIO.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.3 });
+    projects.forEach(function (el) { projIO.observe(el); });
+  } else {
+    // 兜底：老浏览器直接显示全部内容
+    revealEls.forEach(function (el) { el.classList.add('is-visible'); });
+    projects.forEach(function (el) { el.classList.add('in'); });
+  }
+})();
+</script>
+</body>
+</html>

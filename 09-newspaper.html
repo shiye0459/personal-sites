@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="林川日报 · LINCHUAN DAILY —— 独立开发者与胶片摄影师林川的个人报纸。">
+<title>林川日报 · LINCHUAN DAILY｜独立开发者与胶片摄影师</title>
+<!-- ============================================================
+     林川日报 · LINCHUAN DAILY
+     复古报纸风个人网站（19 世纪末—民国报纸质感）
+     单文件 · 零外部依赖：所有视觉均由内联 CSS 与内联 SVG 实现
+     ============================================================ -->
+<style>
+/* ============================================================
+   一、纸墨变量与全局重置
+   ============================================================ */
+:root {
+  --paper:      #F3EAD2;   /* 泛黄纸色 */
+  --paper-deep: #EBDFC0;
+  --ink:        #3B3323;   /* 墨色 */
+  --ink-soft:   #6E6144;   /* 淡墨 */
+  --line:       #B5A67E;   /* 栏线 */
+  --line-dark:  #4A3F28;   /* 深线 */
+  --red:        #A63A2B;   /* 朱印红 */
+  /* 系统字体栈（无外部字体） */
+  --font-song: "Songti SC", "STSong", "SimSun", "宋体", serif;
+  --font-kai:  "Kaiti SC", "STKaiti", "KaiTi", "楷体", serif;
+  --font-hei:  "SimHei", "Heiti SC", "黑体", "PingFang SC", sans-serif;
+  --font-eng:  Georgia, "Times New Roman", "Nimbus Roman No9 L", serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+/* ============================================================
+   二、纸面质感：泛黄渐变 + CSS 渐变噪点 + 旧渍
+   ============================================================ */
+body {
+  background-color: var(--paper);
+  background-image:
+    /* 纸张横向纤维纹 */
+    repeating-linear-gradient(0deg, rgba(90,70,35,0.03) 0 1px, transparent 1px 3px),
+    /* 纸张纵向纤维纹 */
+    repeating-linear-gradient(90deg, rgba(90,70,35,0.02) 0 1px, transparent 1px 2px),
+    /* 细噪点：两层错位圆点 */
+    radial-gradient(rgba(70,55,25,0.07) 1px, transparent 1.4px),
+    radial-gradient(rgba(110,90,50,0.05) 1px, transparent 1.6px),
+    /* 几处旧渍 */
+    radial-gradient(ellipse at 18% 8%,  rgba(150,115,55,0.12), transparent 45%),
+    radial-gradient(ellipse at 85% 92%, rgba(120,90,40,0.10), transparent 40%),
+    /* 纵向泛黄渐变 */
+    linear-gradient(180deg, #F6EFDA 0%, var(--paper) 45%, #EFE3C3 100%);
+  background-size: 100% 3px, 2px 100%, 3px 3px, 7px 7px, auto, auto, auto;
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-song);
+  font-size: 14px;                 /* 报纸正文小字号 */
+  line-height: 1.95;
+  text-align: justify;
+}
+
+/* 边缘旧化暗角（vignette） */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(74,55,25,0.22) 100%);
+  z-index: 50;
+}
+
+/* 版心 */
+.paper {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 30px 44px;
+  position: relative;
+  z-index: 1;
+}
+
+p { margin: 0.55em 0; text-indent: 2em; }
+a { color: #6E4A1F; text-decoration: none; border-bottom: 1px dotted var(--line-dark); }
+a:hover { background: rgba(150,115,50,0.15); }
+
+/* ============================================================
+   三、报头（双线框 + 大号装饰字报头）
+   ============================================================ */
+.masthead {
+  border: 4px double var(--line-dark);   /* 外框：双线 */
+  padding: 10px 18px 12px;
+  text-align: center;
+  position: relative;
+}
+/* 内细线，与外框合成「框中有框」的报头样式 */
+.masthead::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(74,63,40,0.35);
+  pointer-events: none;
+}
+.mast-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+.mast-top .sun { vertical-align: -2px; }
+.title {
+  font-family: var(--font-kai);          /* 楷体大字，仿旧式报头题字 */
+  font-weight: 700;
+  font-size: clamp(44px, 8vw, 72px);
+  letter-spacing: 0.18em;
+  padding-left: 0.18em;
+  margin: 10px 0 0;
+  color: #332A18;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.55);
+}
+.title-en {
+  font-family: var(--font-eng);
+  letter-spacing: 0.5em;
+  padding-left: 0.5em;
+  text-transform: uppercase;
+  font-size: 13px;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 2px;
+}
+.title-en::before, .title-en::after {
+  content: "";
+  height: 1px;
+  width: 90px;
+  background: var(--line);
+}
+.mast-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+  color: var(--ink);
+}
+
+/* 今日要目（报头下的导读条） */
+.ticker {
+  border-top: 1px solid var(--line-dark);
+  border-bottom: 1px solid var(--line-dark);
+  background: rgba(255,252,240,0.35);
+  margin: 16px 0 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+.ticker b { font-family: var(--font-hei); }
+
+/* ============================================================
+   四、多栏密集排版（grid 窄栏 + 竖分隔线）
+   ============================================================ */
+.pagebody {
+  display: grid;
+  grid-template-columns: 1.3fr 1.1fr 0.9fr;   /* 三窄栏 */
+  margin-top: 18px;
+}
+.col {
+  padding: 0 14px;
+  border-left: 1px solid var(--line);          /* 竖分隔线 */
+}
+.col:first-child { border-left: 0; padding-left: 0; }
+.col:last-child  { padding-right: 0; }
+
+/* 栏目标题（双线 + 英文小字装饰） */
+.sec-title {
+  font-family: var(--font-hei);
+  font-size: 13.5px;
+  letter-spacing: 0.3em;
+  padding: 4px 0 4px 0.3em;
+  text-align: center;
+  border-top: 3px double var(--line-dark);
+  border-bottom: 1px solid var(--line-dark);
+  margin: 0 0 12px;
+}
+.sec-title .en {
+  font-family: var(--font-eng);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  color: var(--ink-soft);
+  margin-left: 6px;
+}
+
+/* ============================================================
+   五、头条（人物专访）+ 旧照片效果
+   ============================================================ */
+.feature-title {
+  font-family: var(--font-kai);
+  font-size: 23px;
+  line-height: 1.4;
+  font-weight: 700;
+  text-align: center;
+  margin: 4px 0 0;
+}
+.subtitle {
+  font-family: var(--font-kai);
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 2px 0 0;
+}
+.byline {
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--line);
+}
+/* 导语：加粗首行 */
+.lede { font-weight: 700; text-indent: 0; }
+/* 首字下沉 */
+.dropcap { text-indent: 0; }
+.dropcap::first-letter {
+  font-family: var(--font-kai);
+  font-size: 3em;
+  float: left;
+  line-height: 1;
+  padding: 0.05em 0.12em 0 0;
+  color: #4A3818;
+}
+/* 文末结束符 */
+.end {
+  text-align: center;
+  letter-spacing: 0.5em;
+  padding-left: 0.5em;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-indent: 0;
+  margin: 10px 0 2px;
+}
+
+/* 「旧照片」：白边相框 + 暗角 + sepia 滤镜 */
+.figure {
+  float: right;
+  width: 47%;
+  margin: 8px 0 10px 12px;
+  padding: 8px;
+  background: #FFFDF4;                       /* 白边相框 */
+  box-shadow: 0 2px 6px rgba(60,45,20,0.35), 0 8px 18px rgba(60,45,20,0.18);
+  transform: rotate(-1.2deg);                /* 微微倾斜，如旧照粘贴 */
+  position: relative;
+}
+.figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: sepia(0.5) contrast(1.1) brightness(0.97) saturate(0.9);  /* 旧照片色调 */
+}
+.figure.map svg { filter: sepia(0.3) contrast(1.05); }
+figcaption {
+  font-family: var(--font-kai);
+  font-style: italic;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  text-align: center;
+  padding-top: 5px;
+  line-height: 1.6;
+}
+/* 朱文印章 */
+.seal {
+  position: absolute;
+  right: -4px;
+  bottom: 30px;
+  transform: rotate(-7deg);
+  border: 2px solid var(--red);
+  color: var(--red);
+  font-family: var(--font-kai);
+  font-size: 13px;
+  line-height: 1.25;
+  text-align: center;
+  padding: 2px 6px;
+  background: rgba(243,234,210,0.55);
+  opacity: 0.9;
+}
+
+/* ============================================================
+   六、新闻体项目文章（点击标题展开全文）
+   ============================================================ */
+.news {
+  padding: 7px 8px;
+  margin: 0 -8px 6px;
+  border-bottom: 1px dashed var(--line);
+  transition: background-color 0.25s ease;
+}
+.news:hover { background-color: rgba(140,105,40,0.10); }   /* hover 轻微高亮 */
+.news .head {
+  font-family: var(--font-hei);
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.55;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.news .head::after {
+  content: "（点击展开全文）";
+  display: inline-block;
+  font-family: var(--font-song);
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--ink-soft);
+  letter-spacing: 0;
+  margin-left: 8px;
+}
+.news.open .head::after { content: "（点击收起）"; }
+.news .head:focus-visible { outline: 1px dashed var(--line-dark); outline-offset: 3px; }
+.news .meta { font-size: 12px; color: var(--ink-soft); margin: 2px 0 5px; text-indent: 0; }
+.news p { font-size: 13.5px; }
+.news .rest { display: none; }
+.news.open .rest { display: block; animation: unfold 0.35s ease; }
+@keyframes unfold {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   七、副刊杂俎（编者按 / 履历 / 技能 / 联络）
+   ============================================================ */
+.box {
+  border: 1px solid var(--line-dark);
+  background: rgba(255,252,240,0.25);
+  padding: 8px 12px 10px;
+  margin-bottom: 12px;
+}
+.box h4 {
+  font-family: var(--font-kai);
+  font-size: 16px;
+  letter-spacing: 0.2em;
+  padding-left: 0.2em;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+  margin: 0 0 6px;
+}
+.box h4 .en {
+  font-family: var(--font-eng);
+  font-size: 9.5px;
+  letter-spacing: 0.28em;
+  color: var(--ink-soft);
+  margin-left: 6px;
+}
+.box p { font-size: 13px; }
+.sign { text-align: right; font-family: var(--font-kai); color: var(--ink-soft); }
+/* 人事纪要：时间轴 */
+.timeline { list-style: none; margin: 4px 0 0; padding: 0; }
+.timeline li {
+  border-left: 2px solid var(--line);
+  margin-left: 4px;
+  padding: 2px 0 4px 10px;
+  font-size: 13px;
+  position: relative;
+}
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1.5px solid var(--line-dark);
+}
+.timeline b { font-family: var(--font-hei); font-size: 12.5px; }
+/* 所长一览：技能小签 */
+.skills span {
+  display: inline-block;
+  border: 1px solid var(--line-dark);
+  background: rgba(255,252,240,0.4);
+  padding: 1px 8px;
+  margin: 3px 4px 3px 0;
+  font-size: 12.5px;
+}
+.small { font-size: 12px; color: var(--ink-soft); text-indent: 0; }
+/* 闲时所好 */
+.hobbies { list-style: none; margin: 4px 0 0; padding: 0 0 0 4px; font-size: 13px; }
+.hobbies li { padding: 2px 0; border-bottom: 1px dotted var(--line); }
+.hobbies li:last-child { border-bottom: 0; }
+.hobbies li::before { content: "◇ "; font-size: 9px; color: var(--red); }
+/* 联络框内的小地图照片 */
+.figure.map {
+  float: none;
+  width: 100%;
+  margin: 10px 0 0;
+  transform: rotate(-0.6deg);
+  padding: 7px;
+}
+.contact p { text-indent: 0; overflow-wrap: anywhere; }
+
+/* ============================================================
+   八、分类小广告区
+   ============================================================ */
+.ads {
+  border: 4px double var(--line-dark);
+  margin-top: 26px;
+  padding: 12px 16px 16px;
+}
+.ads-title {
+  font-family: var(--font-kai);
+  font-size: 22px;
+  letter-spacing: 0.55em;
+  padding-left: 0.55em;
+  text-align: center;
+  margin: 0 0 12px;
+}
+.ads-title .en {
+  font-family: var(--font-eng);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--ink-soft);
+  margin-left: 8px;
+}
+.ads-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 16px;
+}
+.ad {
+  border: 1px solid var(--line);
+  background: rgba(255,252,240,0.35);
+  padding: 7px 11px;
+  font-size: 12.5px;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+.ad b { font-family: var(--font-hei); font-size: 13px; letter-spacing: 0.05em; }
+.ad.center { text-align: center; }
+.stars {
+  color: var(--red);
+  text-align: center;
+  letter-spacing: 0.5em;
+  padding-left: 0.5em;
+  font-size: 10px;
+  padding-top: 1px;
+}
+
+/* ============================================================
+   九、页脚：报社地址与印刷信息
+   ============================================================ */
+.foot {
+  margin-top: 24px;
+  border-top: 3px double var(--line-dark);
+  border-bottom: 1px solid var(--line-dark);
+  padding: 12px 4px 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 2;
+}
+.foot .big {
+  font-family: var(--font-kai);
+  font-size: 16px;
+  letter-spacing: 0.2em;
+  color: var(--ink);
+}
+
+/* ============================================================
+   十、响应式（桌面优先，移动端不崩）
+   ============================================================ */
+@media (max-width: 940px) {
+  .pagebody { grid-template-columns: 1fr; }        /* 三栏折叠为单栏 */
+  .col { border-left: 0; border-top: 1px solid var(--line); padding: 14px 0; }
+  .col:first-child { border-top: 0; padding-top: 0; }
+  .figure { float: none; width: 100%; margin: 12px 0; }
+  .ads-grid { grid-template-columns: repeat(2, 1fr); }
+  .mast-top, .mast-bottom { flex-wrap: wrap; justify-content: center; }
+}
+@media (max-width: 560px) {
+  .paper { padding: 14px 14px 30px; }
+  .ads-grid { grid-template-columns: 1fr; }
+  .title-en { letter-spacing: 0.28em; padding-left: 0.28em; }
+  .title-en::before, .title-en::after { width: 26px; }
+  .sec-title { letter-spacing: 0.18em; }
+  body { font-size: 13.5px; }
+}
+</style>
+</head>
+<body>
+<div class="paper">
+
+  <!-- ======================= 报头 ======================= -->
+  <header class="masthead">
+    <div class="mast-top">
+      <span>第壹佰贰拾柒号</span>
+      <span>
+        本日天气：晴，午后微风
+        <!-- 内联 SVG 小太阳 -->
+        <svg class="sun" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true">
+          <g stroke="#6E6144" stroke-width="1.6" stroke-linecap="round">
+            <line x1="12" y1="1.5" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22.5"/>
+            <line x1="1.5" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22.5" y2="12"/>
+            <line x1="4.6" y1="4.6" x2="6.7" y2="6.7"/><line x1="17.3" y1="17.3" x2="19.4" y2="19.4"/>
+            <line x1="4.6" y1="19.4" x2="6.7" y2="17.3"/><line x1="17.3" y1="6.7" x2="19.4" y2="4.6"/>
+          </g>
+          <circle cx="12" cy="12" r="4.6" fill="#6E6144"/>
+        </svg>
+      </span>
+      <span>每份五分</span>
+    </div>
+    <h1 class="title">林川日报</h1>
+    <div class="title-en">LINCHUAN DAILY</div>
+    <div class="mast-bottom">
+      <span>中华民国一百一十五年八月十三日</span>
+      <span>星期四 · 丙午年</span>
+      <span>西历二〇二六年 · 创刊于二〇二三年</span>
+    </div>
+  </header>
+
+  <!-- 今日要目 -->
+  <div class="ticker">
+    <b>今日要目</b>｜专访：白天写代码，晚上拍胶片｜拾光 App 广受好评｜码字工具面世｜岛读上线｜午后电台开播
+  </div>
+
+  <!-- ======================= 多栏正文 ======================= -->
+  <main class="pagebody">
+
+    <!-- ============ 第一栏：本报专访（人物介绍） ============ -->
+    <section class="col">
+      <h2 class="sec-title">本报专访 <span class="en">INTERVIEW</span></h2>
+
+      <h3 class="feature-title">白天写代码，晚上拍胶片</h3>
+      <p class="subtitle">—— 记独立开发者林川君</p>
+      <p class="byline">（本报专访）记者 木子 · 配图由受访者提供</p>
+
+      <p class="lede">【本报专访】杭州人士林川，前互联网大厂前端工程师，二〇二三年辞去职务，自此成为独立开发者。其人白昼伏案写代码，入夜则挎一台胶片相机游走湖山之间。友人谓之「双面人生」，林川一笑置之：「不过是白天侍奉机器，晚上伺候光影。」</p>
+
+      <!-- 「旧照片」：白边相框 + 朱印 + 图注，画面为内联 SVG 几何风景 -->
+      <figure class="figure">
+        <svg viewBox="0 0 480 300" role="img" aria-label="西湖日落风景（以 SVG 几何图形绘制的旧照片）">
+          <!-- 天空 -->
+          <rect width="480" height="300" fill="#E8DDBE"/>
+          <!-- 落日与光晕 -->
+          <circle cx="352" cy="108" r="44" fill="#D4AF76" opacity="0.22"/>
+          <circle cx="352" cy="108" r="30" fill="#D4AF76"/>
+          <!-- 飞鸟 -->
+          <path d="M148 86 q7 -8 14 0 M174 74 q6 -7 12 0" stroke="#6E6144" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <!-- 远山（淡） -->
+          <path d="M0 178 L72 118 L132 166 L205 128 L262 176 L330 138 L390 172 L480 144 L480 300 L0 300 Z" fill="#98856A" opacity="0.9"/>
+          <!-- 近山（深） -->
+          <path d="M0 168 Q50 142 100 158 T192 152 Q250 172 300 158 T390 160 Q440 150 480 162 L480 300 L0 300 Z" fill="#7A6B50"/>
+          <!-- 保俶塔剪影 -->
+          <g fill="#5E5240">
+            <path d="M434 128 l7 -26 7 26 z"/>
+            <rect x="435" y="128" width="6" height="26"/>
+            <rect x="432" y="133" width="12" height="3"/>
+            <rect x="432" y="145" width="12" height="3"/>
+          </g>
+          <!-- 湖面 -->
+          <rect x="0" y="185" width="480" height="115" fill="#9C8E68"/>
+          <!-- 波纹 -->
+          <g stroke="#6E6144" stroke-width="1.5" fill="none" opacity="0.55">
+            <path d="M0 205 q30 5 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
+            <path d="M0 232 q30 -5 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
+            <path d="M0 262 q30 5 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
+            <path d="M0 290 q30 -4 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
+          </g>
+          <!-- 落日倒影 -->
+          <g fill="#D4AF76" opacity="0.7">
+            <rect x="348" y="196" width="8" height="3"/>
+            <rect x="343" y="206" width="15" height="3"/>
+            <rect x="350" y="216" width="6" height="3"/>
+            <rect x="339" y="228" width="19" height="3"/>
+            <rect x="347" y="242" width="8" height="3"/>
+            <rect x="342" y="257" width="13" height="3"/>
+          </g>
+          <!-- 三潭印月石塔剪影 -->
+          <defs>
+            <g id="pagoda" fill="#5E5240">
+              <path d="M0 -14 l5 -13 5 13 z"/>
+              <rect x="1.5" y="-14" width="7" height="12"/>
+              <rect x="-2" y="-10" width="14" height="2.5"/>
+              <rect x="-2" y="-4" width="14" height="2.5"/>
+            </g>
+          </defs>
+          <use href="#pagoda" x="52" y="228"/>
+          <use href="#pagoda" x="96" y="242"/>
+          <use href="#pagoda" x="140" y="226"/>
+          <!-- 左角垂柳 -->
+          <g stroke="#6B5A38" stroke-width="2.5" fill="none" opacity="0.85">
+            <path d="M-4 -4 Q30 38 24 92"/>
+            <path d="M-4 -4 Q50 44 42 106"/>
+            <path d="M-4 -4 Q14 26 8 74"/>
+          </g>
+        </svg>
+        <figcaption>图为林川摄于西湖。胶片 Kodak Gold 200，f/8，1/250 秒。</figcaption>
+        <!-- 朱文印章 -->
+        <span class="seal">林川<br>摄</span>
+      </figure>
+
+      <!-- 首字下沉正文 -->
+      <p class="dropcap">林川者，杭州人也。二〇一八年入职本市某互联网公司，任前端工程师，凡五年，专司前端架构与工程化之事。二〇二三年，辞去职务，自立门户。问其缘由，答曰：「写代码十年，最想做点自己的东西——小一点，慢一点，久一点。」</p>
+      <p>其所为之事，皆小而美：做给自己用的工具，写给人看的故事。此十四字，林川常书于案头。四件作品——拾光、码字、岛读、午后电台——无注册页，无开屏广告，无推送滋扰，功能恰如其分。本报记者试用后感叹：如旧时匠人铺子，门面虽小，件件称手。</p>
+      <p>入夜之后，林川另有营生。胶片摄影、徒步群山、手冲咖啡、收集旧地图——尤以旧地图为癖，家中藏图百有余幅，自民国杭州至九十年代全国交通图，不一而足。其人言：「地图是时间的切片，胶片也是。」</p>
+      <p>本报记者问及未来，林川答：「把四件产品慢慢磨好，把杭州的山走遍，把冰箱里的胶卷拍完。」语毕，付之一笑。</p>
+      <p class="end">■</p>
+    </section>
+
+    <!-- ============ 第二栏：本埠要闻（四个项目，新闻体） ============ -->
+    <section class="col">
+      <h2 class="sec-title">本埠要闻 <span class="en">LOCAL NEWS</span></h2>
+
+      <!-- 新闻一：拾光 -->
+      <article class="news toggle" aria-expanded="false">
+        <h3 class="head" tabindex="0">本市开发者推出胶片相机 App「拾光」，广受好评</h3>
+        <p class="meta">（本埠讯）记者 木子</p>
+        <p class="lede">一款模拟十二种经典胶卷色彩的胶片相机 App 近日问世，上线以来好评如潮，被用户称为「手机里的胶片柜」。</p>
+        <div class="rest">
+          <p>开发者林川介绍，拾光内置 Kodak Gold 200、Portra 400、Fujifilm Superia 400、Ilford HP5 Plus 等十二种经典胶卷预设，并模拟了过期胶卷特有的颗粒、偏色与漏光。拍摄之后，照片须经数秒「显影」方能查看——这份等待，正是胶片时代的仪式感。该 App 同时支持手动对焦、曝光补偿与日期戳印。</p>
+          <p>「起初只是拍胶片时想要一款趁手的工具，」林川说，「找不到，就自己做一个。」</p>
+          <p class="end">■</p>
+        </div>
+      </article>
+
+      <!-- 新闻二：码字 -->
+      <article class="news toggle" aria-expanded="false">
+        <h3 class="head" tabindex="0">本地优先的写作工具「码字」面世，文字不离本机</h3>
+        <p class="meta">（本埠讯）记者 木子</p>
+        <p class="lede">一款本地优先的 Markdown 写作工具「码字」日前面世，所有文稿皆存储于用户本机，不登录、不上传、不打扰。</p>
+        <div class="rest">
+          <p>码字支持 Markdown 实时预览、多文库管理与全文搜索，亦可一键导出 HTML 与 PDF。开发者表示，写作最怕被打断，云端同步与通知皆是噪音；工具应当安静，像一张铺好的稿纸。</p>
+          <p>自上线以来，码字已为多位写作者所用。用户评曰：「打开就能写，写完就在。」</p>
+          <p class="end">■</p>
+        </div>
+      </article>
+
+      <!-- 新闻三：岛读 -->
+      <article class="news toggle" aria-expanded="false">
+        <h3 class="head" tabindex="0">读书有记：为纸质书而生的笔记 App「岛读」上线</h3>
+        <p class="meta">（文化讯）记者 木子</p>
+        <p class="lede">一款专为纸质书设计的读书笔记 App「岛读」近日上线，拍下书页、划出金句，笔记与页码一一对应。</p>
+        <div class="rest">
+          <p>开发者林川酷爱读纸质书，苦于摘抄繁琐，遂开发此应用。岛读以相机识别页码，用户只需框选文中句子，即可存为笔记，日后按书名、作者、日期检索。所有笔记可导出为 Markdown，永不锁闭。</p>
+          <p>林川说：「书是纸做的，笔记不必困在纸里，但也不必困在云端。」读书如登岛，此应用故名曰「岛读」。</p>
+          <p class="end">■</p>
+        </div>
+      </article>
+
+      <!-- 新闻四：午后电台 -->
+      <article class="news toggle" aria-expanded="false">
+        <h3 class="head" tabindex="0">午后电台开播：收藏一座城市的声响</h3>
+        <p class="meta">（文艺讯）记者 木子</p>
+        <p class="lede">一个收集城市声音的网站「午后电台」近日上线，雨打檐廊、轮渡汽笛、巷口叫卖，皆可投稿。</p>
+        <div class="rest">
+          <p>午后电台不设歌单，只有声音：清晨的洒水车、菜场里的讨价还价、宝石山顶的风。网站以地图为索引，每段声音配一段短文与一张照片。林川表示，城市的记忆不该只有影像，还应有声响。</p>
+          <p>首批收录之「湖滨雨声」「知味观前叫卖」已上线，欢迎市民投稿。</p>
+          <p class="end">■</p>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============ 第三栏：杂俎副刊（经历 / 技能 / 兴趣 / 联络） ============ -->
+    <aside class="col">
+      <h2 class="sec-title">杂俎 · 副刊 <span class="en">MISCELLANY</span></h2>
+
+      <!-- 编者按 -->
+      <div class="box">
+        <h4>编者按 <span class="en">EDITOR'S NOTE</span></h4>
+        <p>市面产品多求「大而全」，动辄注册、登录、推送、会员。林川反其道而行，产品以「小」自守，以「美」自持。小而美三字，说来容易，做来极难。本报愿为其背书：此人可信，其工具好用。</p>
+        <p class="sign">—— 本报编辑部</p>
+      </div>
+
+      <!-- 人事纪要（经历） -->
+      <div class="box">
+        <h4>人事纪要 <span class="en">RÉSUMÉ</span></h4>
+        <ul class="timeline">
+          <li><b>二〇一八年三月</b><br>入职本市某互联网公司，任前端工程师，凡五年。</li>
+          <li><b>二〇二三年十月</b><br>辞去职务，成为独立开发者，单枪匹马，出品四件。</li>
+          <li><b>二〇二三年至今</b><br>以杭州为据点，昼写代码，夜拍胶片，乐此不疲。</li>
+        </ul>
+      </div>
+
+      <!-- 所长一览（技能） -->
+      <div class="box">
+        <h4>所长一览 <span class="en">SKILLS</span></h4>
+        <div class="skills">
+          <span>TypeScript</span><span>React</span><span>SwiftUI</span><span>摄影</span><span>写作</span>
+        </div>
+        <p class="small">（另有煮咖啡、识旧图两技，未列入正册。）</p>
+      </div>
+
+      <!-- 闲时所好（兴趣） -->
+      <div class="box">
+        <h4>闲时所好 <span class="en">HOBBIES</span></h4>
+        <ul class="hobbies">
+          <li>胶片摄影</li>
+          <li>徒步群山</li>
+          <li>煮咖啡</li>
+          <li>收集旧地图</li>
+        </ul>
+      </div>
+
+      <!-- 联络本报（联系方式 + 旧地图小照片） -->
+      <div class="box contact">
+        <h4>联络本报 <span class="en">CONTACT</span></h4>
+        <p>
+          函电：<a href="mailto:linchuan@example.com">linchuan@example.com</a><br>
+          GitHub：<a href="https://github.com/linchuan-dev">github.com/linchuan-dev</a><br>
+          <span class="small">来访请先函告，社址见报尾。</span>
+        </p>
+        <!-- 旧地图「照片」：内联 SVG 几何图形模拟 -->
+        <figure class="figure map">
+          <svg viewBox="0 0 220 160" role="img" aria-label="旧杭州地图一角（以 SVG 几何图形绘制）">
+            <rect width="220" height="160" fill="#E6D9B6"/>
+            <rect x="4" y="4" width="212" height="152" fill="none" stroke="#7A6B50" stroke-width="1.5"/>
+            <rect x="8" y="8" width="204" height="144" fill="none" stroke="#7A6B50" stroke-width="0.75" opacity="0.6"/>
+            <!-- 城墙（点线） -->
+            <path d="M14 30 C60 20 120 24 206 26" stroke="#8A7752" stroke-width="1.2" stroke-dasharray="5 3" fill="none" opacity="0.8"/>
+            <!-- 西湖 -->
+            <path d="M58 48 C86 36 118 42 132 64 C148 86 140 112 118 124 C96 136 70 130 56 112 C40 94 38 62 58 48 Z" fill="#A9C0B4" opacity="0.95"/>
+            <!-- 湖水波纹 -->
+            <path d="M70 78 q10 5 20 0 M64 92 q10 5 20 0 M74 106 q10 5 20 0" stroke="#7FA096" stroke-width="1" fill="none" opacity="0.8"/>
+            <!-- 街巷 -->
+            <g stroke="#8A7752" stroke-width="1" opacity="0.85">
+              <path d="M14 84 L206 78"/>
+              <path d="M18 106 L210 100"/>
+              <path d="M70 12 L64 148"/>
+              <path d="M122 10 L128 150"/>
+              <path d="M170 10 L178 150"/>
+            </g>
+            <!-- 地名 -->
+            <text x="86" y="94" font-family="KaiTi, SimSun, serif" font-size="10" fill="#4F6B63">西湖</text>
+            <text transform="rotate(86 134 72)" x="134" y="72" font-family="KaiTi, SimSun, serif" font-size="9" fill="#6B5A3A">中山路</text>
+            <text x="24" y="22" font-family="KaiTi, SimSun, serif" font-size="9" fill="#6B5A3A">艮山门</text>
+            <!-- 现居标记 -->
+            <circle cx="112" cy="128" r="3.5" fill="#A63A2B"/>
+            <text x="120" y="131" font-family="KaiTi, SimSun, serif" font-size="9" fill="#A63A2B">林川寓所</text>
+            <!-- 指北针 -->
+            <g transform="translate(196,132)">
+              <path d="M0 -9 L4.5 5 L0 2.5 L-4.5 5 Z" fill="#6B5A3A"/>
+              <text x="-4" y="-13" font-family="KaiTi, SimSun, serif" font-size="9" fill="#6B5A3A">北</text>
+            </g>
+          </svg>
+          <figcaption>图为林川收藏之旧杭州地图（一角）。</figcaption>
+        </figure>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ======================= 分类小广告 ======================= -->
+  <section class="ads">
+    <h2 class="ads-title">分类小广告 <span class="en">CLASSIFIED</span></h2>
+    <div class="ads-grid">
+      <div class="ad">
+        <b>承接各类 App 开发</b><br>
+        前端、移动端、小程序，皆可承做。工细价廉，童叟无欺。有意者函至 linchuan@example.com，三日内必复。
+      </div>
+      <div class="ad center">
+        <div class="stars">※ ※ ※</div>
+        <b>出售二手胶片相机</b><br>
+        美能达 SRT-101 一台，成色九成新，镜头无霉无尘，附原装皮套。有意者面议，非诚勿扰。
+        <div class="stars">※ ※ ※</div>
+      </div>
+      <div class="ad">
+        <b>高价收购旧地图</b><br>
+        民国以来各城市旧地图、老交通图，缺角残页亦可，价格从优。家有旧图者，速与本报联系。
+      </div>
+      <div class="ad center">
+        <b>征集城市声音</b><br>
+        雨声、叫卖、汽笛、蝉鸣，凡有韵味者，请投「午后电台」。一经录用，奉酬一份，并刊其名。
+      </div>
+      <div class="ad">
+        <b>胶卷换咖啡豆</b><br>
+        手持过期胶卷者，可携卷来访，换手冲咖啡豆一包。以物易物，广结同好，长期有效。
+      </div>
+      <div class="ad">
+        <b>遗失启事</b><br>
+        昨日下午徒步宝石山，遗失镜头遮光罩一只。拾得归还者，敬奉手冲咖啡一杯。<br>林川谨启
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 页脚 ======================= -->
+  <footer class="foot">
+    <div class="big">林川日报 · LINCHUAN DAILY</div>
+    <div>本报社址：杭州市西湖区北山街三十八号　｜　编辑部函电：linchuan@example.com</div>
+    <div>本报由林川个人印刷发行 · 每份五分 · 创刊于二〇二三年</div>
+    <div>© 2026 LINCHUAN DAILY · 版权所有 · 翻印必究 · GitHub：github.com/linchuan-dev</div>
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   交互：点击新闻标题展开 / 收起全文
+   ============================================================ */
+(function () {
+  var articles = document.querySelectorAll('.news.toggle');
+  articles.forEach(function (art) {
+    var head = art.querySelector('.head');
+    if (!head) return;
+    art.setAttribute('aria-expanded', 'false');
+    function toggle() {
+      var open = art.classList.toggle('open');
+      art.setAttribute('aria-expanded', String(open));
+    }
+    head.addEventListener('click', toggle);
+    /* 键盘可达：回车 / 空格 */
+    head.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

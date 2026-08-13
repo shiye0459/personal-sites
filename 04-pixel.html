@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="林川的个人主页——独立开发者与胶片摄影师，像素游戏风的个人网站。">
+<title>林川 · 个人主页 LIN CHUAN</title>
+<!-- 像素小图标 favicon：纯内联 SVG，零外部资源 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%231a1c2c'/%3E%3Crect x='4' y='2' width='8' height='8' fill='%23ffcd75'/%3E%3Crect x='6' y='5' width='1' height='1' fill='%231a1c2c'/%3E%3Crect x='9' y='5' width='1' height='1' fill='%231a1c2c'/%3E%3Crect x='3' y='10' width='10' height='4' fill='%233b5dc9'/%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   林川 · 像素游戏风个人主页
+   骨架 = 游戏机：标题画面 → 主菜单 → 各「场景」
+   全部视觉由 CSS 与 box-shadow 点阵实现，零外部依赖
+   ============================================================ */
+
+/* ---------- 调色板（Sweetie-16 系复古色） ---------- */
+:root {
+  --ink:     #1a1c2c;  /* 墨黑 */
+  --bg-page: #0d0f1a;  /* 页面底色 */
+  --screen:  #141527;  /* 游戏屏底色 */
+  --panel:   #20263f;  /* 面板 */
+  --panel2:  #333c57;  /* 面板边框 */
+  --line:    #566c86;  /* 描线 */
+  --white:   #f4f4f4;
+  --gray:    #94b0c2;
+  --gold:    #ffcd75;
+  --red:     #b13e53;
+  --green:   #38b764;
+  --lime:    #a7f070;
+  --cyan:    #73eff7;
+  --blue:    #41a6f6;
+  --dblue:   #3b5dc9;
+  --brown:   #8a5a44;
+  /* 系统字体栈，不加载任何外部字体 */
+  --font: "Courier New", "Lucida Console", Consolas, Menlo,
+          "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font);
+  color: var(--white);
+  /* 深色游戏背景：顶部微光 + 细网格 */
+  background:
+    radial-gradient(1100px 560px at 50% -80px, #1b2140 0%, transparent 60%),
+    repeating-linear-gradient(0deg,   rgba(115,239,247,.045) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(90deg,  rgba(115,239,247,.045) 0 1px, transparent 1px 32px),
+    var(--bg-page);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 18px 12px;
+}
+
+button { font: inherit; color: inherit; background: none; border: none; text-align: inherit; cursor: pointer; }
+a { color: inherit; }
+
+/* 触摸设备：避免双击缩放 */
+button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: manipulation; }
+
+/* 键盘可见焦点 */
+.menu-item:focus-visible, button:focus-visible, .letter:focus-visible, .chapter:focus-visible {
+  outline: 2px dashed var(--gold); outline-offset: 2px;
+}
+
+/* ============================================================
+   像素台阶式边框 —— 全部用 box-shadow 叠层拼出：
+   内圈 4px 主边框（八块阴影）+ 外圈 4px 描边（四边，不补外圈四角）
+   两层错开 → 每个角形成两阶「楼梯」切口，即 NES 窗口角
+   ============================================================ */
+.px-box {
+  --b: var(--panel2);   /* 主边框色 */
+  --o: #0a0c16;         /* 外描边色 */
+  box-shadow:
+    /* 内圈：四边 + 四角 */
+    0   4px  0 0 var(--b), 0   -4px 0 0 var(--b),
+    4px 0    0 0 var(--b), -4px 0   0 0 var(--b),
+    4px 4px  0 0 var(--b), 4px -4px 0 0 var(--b),
+   -4px 4px  0 0 var(--b), -4px -4px 0 0 var(--b),
+    /* 外圈：仅四边，不补外圈四角 → 台阶切口 */
+    0   8px  0 0 var(--o), 0   -8px 0 0 var(--o),
+    8px 0    0 0 var(--o), -8px 0   0 0 var(--o);
+}
+/* 单圈 4px 细像素框（用于小控件） */
+.px-thin {
+  box-shadow:
+    0 4px 0 0 var(--b), 0 -4px 0 0 var(--b),
+    4px 0 0 0 var(--b), -4px 0 0 0 var(--b),
+    4px 4px 0 0 var(--b), 4px -4px 0 0 var(--b),
+    -4px 4px 0 0 var(--b), -4px -4px 0 0 var(--b);
+}
+
+/* ---------- 游戏机外壳 ---------- */
+.console { width: min(840px, 100%); }
+
+.console-label {
+  text-align: center; font-size: 10px; letter-spacing: .3em;
+  color: var(--line); padding-bottom: 10px;
+}
+.led {
+  display: inline-block; width: 6px; height: 6px; background: var(--red);
+  margin: 0 8px 1px; animation: blinkHard 1.6s steps(1, end) infinite;
+}
+
+.console-frame {
+  background: #0a0c16;
+  padding: 12px;
+  --b: #333c57; --o: #10132a;
+}
+
+/* ---------- 游戏屏幕 ---------- */
+.screen {
+  position: relative;
+  height: min(580px, 64vh);
+  min-height: 420px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #171b33 0%, #101322 100%);
+  image-rendering: pixelated;
+  --b: #2a3154; --o: #0a0c16;
+}
+.screen.flicker { animation: flick .16s steps(2, end) 1; }  /* 切场景的 CRT 闪屏 */
+@keyframes flick { 0% { filter: brightness(2.4); } 50% { filter: brightness(.45); } 100% { filter: brightness(1); } }
+
+/* HUD：场景名（游戏感抬头条） */
+.hud {
+  position: absolute; top: 8px; left: 12px; right: 12px; z-index: 30;
+  display: flex; justify-content: space-between;
+  font-size: 11px; letter-spacing: .15em; color: var(--line);
+  pointer-events: none;
+}
+.hud-r { color: #4a5578; }
+
+/* 星空背景层 */
+#stars { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.star { position: absolute; animation: tw 2.4s steps(1, end) infinite; }
+@keyframes tw { 0%, 55% { opacity: .9; } 56%, 100% { opacity: .12; } }
+
+/* CRT 扫描线 + 暗角 */
+.scanlines {
+  position: absolute; inset: 0; z-index: 40; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(6,8,16,.2) 0 1px, transparent 1px 3px);
+}
+.vignette {
+  position: absolute; inset: 0; z-index: 39; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(5,6,14,.42) 100%);
+}
+
+/* ---------- 场景容器（游戏内的各「场景」） ---------- */
+.scene {
+  position: absolute; inset: 0; z-index: 20;
+  display: none; overflow-y: auto;
+  user-select: none;
+}
+.scene.active { display: flex; }
+.scene-inner {
+  margin: auto; width: 100%; max-width: 780px;
+  padding: 38px 20px 18px;
+}
+.scene-title {
+  text-align: center; color: var(--gray);
+  font-size: 12px; font-weight: 700; letter-spacing: .3em;
+  margin: 0 0 14px;
+}
+.scene-title span { color: #4a5578; letter-spacing: .2em; }
+.hint {
+  text-align: center; color: #4a5578;
+  font-size: 10.5px; letter-spacing: .15em; margin-top: 14px;
+}
+
+/* ---------- 像素渲染容器（JS 生成的点阵） ---------- */
+.pix-box { position: relative; flex: none; image-rendering: pixelated; }
+.pix { position: absolute; top: 0; left: 0; display: block; }
+
+/* ---------- 硬闪烁动画（steps 实现像素式跳变） ---------- */
+@keyframes blinkHard { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+/* 呼吸/上下跳动（steps 两帧） */
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.bob { animation: bob .9s steps(2, end) infinite; }
+
+/* ============================================================
+   场景一：标题画面
+   ============================================================ */
+.presents { color: var(--line); font-size: 11px; letter-spacing: .4em; text-align: center; }
+.title-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 28px; margin: 16px 0 8px; flex-wrap: wrap;
+}
+#title-glyphs { display: flex; gap: 18px; }
+#title-glyphs .pix-box { filter: drop-shadow(5px 5px 0 rgba(0,0,0,.55)); }
+.tagline {
+  color: var(--white); font-weight: 700; font-size: 17px;
+  letter-spacing: .3em; text-align: center; margin-top: 6px;
+  text-shadow: 2px 2px 0 rgba(0,0,0,.6);
+}
+.tagline-en {
+  color: var(--cyan); font-size: 10.5px; letter-spacing: .28em;
+  text-align: center; margin-top: 8px;
+}
+.press-start {
+  color: var(--gold); font-weight: 700; font-size: 15px;
+  letter-spacing: .3em; text-align: center; margin-top: 20px; cursor: pointer;
+  text-shadow: 2px 2px 0 rgba(0,0,0,.7);
+  animation: blinkHard 1.1s steps(1, end) infinite;
+}
+.credit { color: #4a5578; font-size: 10px; letter-spacing: .2em; text-align: center; margin-top: 10px; }
+
+/* ============================================================
+   场景二：主菜单（游戏菜单列表 + 闪烁光标）
+   ============================================================ */
+.menu { list-style: none; margin: 8px auto 0; padding: 0; width: min(470px, 100%); }
+.menu-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; cursor: pointer;
+  color: var(--gray); font-weight: 700; letter-spacing: .15em;
+  border-bottom: 2px solid #262c4d;
+}
+.menu-item:hover { background: #262c4d; }
+.menu-item .cursor { width: 1.1em; flex: none; color: var(--gold); opacity: 0; }
+.menu-item .zh { font-size: 16px; }
+.menu-item .en { font-size: 10px; color: var(--line); letter-spacing: .25em; }
+.menu-item .sub { margin-left: auto; font-size: 10.5px; color: #4a5578; letter-spacing: .08em; }
+.menu-item.sel { background: var(--panel2); color: var(--white); }
+.menu-item.sel .cursor { opacity: 1; animation: blinkHard 1s steps(1, end) infinite; }
+.menu-item.sel .sub { color: var(--gray); }
+
+/* ============================================================
+   场景三：关于我 —— RPG 对话场景
+   （白底黑字对话框 + 逐字打印 + ▼ 继续提示）
+   ============================================================ */
+.about-row {
+  display: flex; gap: 22px; justify-content: center;
+  align-items: flex-end; flex-wrap: wrap;
+}
+.stage { position: relative; width: 250px; flex: none; }
+.sprite-holder {
+  position: relative; display: flex; justify-content: center;
+  align-items: flex-end; height: 132px;
+}
+.ground {
+  height: 16px; background: #16322a;
+  border-top: 4px solid #2a6b47;
+}
+/* 地面上的灌木 / 太阳 / 手里的相机，均为 box-shadow 点阵 */
+.stage-abs { position: absolute; }
+
+.dialog {
+  position: relative;
+  background: var(--white); color: var(--ink);
+  width: min(470px, 100%);
+  --b: var(--ink); --o: #0a0c16;
+}
+.dialog .nameplate {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--ink2); color: var(--white);
+  padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: .12em;
+}
+.dialog .page-num { color: var(--cyan); font-size: 10px; }
+.dialog .text {
+  padding: 14px 16px 26px; min-height: 96px;
+  font-size: 14px; font-weight: 700; line-height: 1.9; letter-spacing: .05em;
+}
+.caret { color: #a06a10; animation: blinkHard 1s steps(1, end) infinite; }
+.dialog .next {
+  position: absolute; right: 12px; bottom: 6px;
+  color: var(--ink); font-size: 12px;
+  animation: blinkHard 1s steps(1, end) infinite;
+}
+
+/* ============================================================
+   场景四：我的作品 —— 道具栏（像素卡片 + 稀有度标签）
+   ============================================================ */
+.items-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  max-width: 560px; margin: 0 auto 16px;
+}
+.item-card {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px 10px;
+  background: var(--panel);
+  text-align: center;
+}
+.item-card.focus { --b: var(--gold); transform: translate(-2px, -2px); }
+.item-card .sel-mark {
+  position: absolute; top: 6px; left: 8px;
+  color: var(--gold); font-size: 12px; opacity: 0;
+}
+.item-card.focus .sel-mark { opacity: 1; animation: blinkHard 1s steps(1, end) infinite; }
+.item-card .rarity { font-size: 10px; font-weight: 700; letter-spacing: .15em; }
+.rarity.SSR { color: var(--gold); }
+.rarity.SR  { color: var(--cyan); }
+.rarity.R   { color: var(--lime); }
+.item-card .nm { color: var(--white); font-size: 15px; font-weight: 700; letter-spacing: .15em; }
+.item-card .en { color: var(--gray); font-size: 10px; letter-spacing: .2em; }
+.item-card .eq-badge { display: none; font-size: 10px; color: var(--gold); letter-spacing: .1em; }
+.item-card.eq .eq-badge { display: block; }
+
+/* 道具详情面板：白底黑字，与对话框呼应 */
+.item-detail {
+  max-width: 560px; margin: 0 auto;
+  background: var(--white); color: var(--ink);
+  padding: 12px 16px;
+  --b: var(--ink); --o: #0a0c16;
+}
+.d-name { font-size: 15px; font-weight: 700; letter-spacing: .1em; }
+.d-name .rar { font-size: 10px; margin-left: 8px; letter-spacing: .15em; }
+.d-desc { font-size: 12.5px; font-weight: 600; line-height: 1.9; margin-top: 4px; }
+.d-flavor { color: #7a5c14; font-size: 12px; margin-top: 6px; }
+.d-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.d-stats { color: #3b466e; font-size: 11px; letter-spacing: .1em; }
+.btn {
+  background: var(--gold); color: var(--ink);
+  font-weight: 700; font-size: 12px; letter-spacing: .1em;
+  padding: 6px 12px; --b: var(--ink);
+}
+.btn:hover { background: var(--white); }
+
+/* ============================================================
+   场景五：技能属性 —— RPG 状态面板（等级/血条/像素段条）
+   ============================================================ */
+.stats-wrap {
+  display: grid; grid-template-columns: 300px 1fr; gap: 16px;
+  max-width: 640px; margin: 0 auto; align-items: start;
+}
+.stat-id, .stat-skills { background: var(--panel); padding: 14px; }
+.id-row { display: flex; align-items: center; gap: 12px; }
+.id-name { color: var(--white); font-size: 16px; font-weight: 700; letter-spacing: .15em; }
+.id-name span { color: var(--gold); font-size: 10px; letter-spacing: .1em; }
+.id-job { color: var(--gray); font-size: 12px; margin-top: 4px; letter-spacing: .05em; }
+.id-loc, .id-exp { color: #4a5578; font-size: 10.5px; margin-top: 3px; letter-spacing: .1em; }
+
+.hpmp { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.hpline { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.hpline .lbl { width: 92px; color: var(--gray); letter-spacing: .1em; }
+.hpline .num { width: 54px; color: var(--gray); text-align: right; }
+
+/* 像素段式血条：repeating-linear-gradient 切成一段段方块 */
+.bar {
+  flex: 1; height: 14px; background: var(--ink);
+  --b: var(--line);
+  image-rendering: pixelated;
+}
+.bar i {
+  display: block; height: 100%; width: var(--w, 50%);
+  background: repeating-linear-gradient(90deg, var(--c, var(--green)) 0 10px, transparent 10px 12px);
+}
+.bar.mp i { background: repeating-linear-gradient(90deg, var(--gold) 0 10px, transparent 10px 12px); }
+
+.sub-h { color: var(--gold); font-size: 11px; letter-spacing: .25em; margin: 14px 0 8px; }
+.stat { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 11.5px; }
+.stat .k { width: 108px; color: var(--white); letter-spacing: .08em; }
+.stat .v { width: 58px; color: var(--gold); text-align: right; }
+.traits { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip {
+  background: var(--ink); color: var(--gray);
+  border: 2px solid var(--line); padding: 4px 8px;
+  font-size: 11px; letter-spacing: .08em;
+}
+.equip-line { color: var(--gray); font-size: 12px; line-height: 1.8; }
+
+/* ============================================================
+   场景六：经历 —— 冒险日志（章节卡片）
+   ============================================================ */
+.journal { display: flex; flex-direction: column; gap: 14px; max-width: 560px; margin: 0 auto; }
+.chapter { background: var(--panel); padding: 12px 14px; cursor: pointer; }
+.chapter.sel { --b: var(--cyan); }
+.ch-head { display: flex; align-items: center; gap: 10px; font-size: 11px; }
+.ch-tag { background: var(--ink2); color: var(--cyan); padding: 2px 8px; letter-spacing: .1em; }
+.ch-years { color: var(--gray); letter-spacing: .1em; }
+.ch-kind { margin-left: auto; color: var(--gold); letter-spacing: .1em; }
+.ch-title { color: var(--white); font-size: 15px; font-weight: 700; letter-spacing: .12em; margin: 8px 0 6px; }
+.ch-text { color: var(--gray); font-size: 12.5px; line-height: 1.9; }
+
+/* ============================================================
+   场景七：联系 —— 信笺宝箱（像素信箱 + 三封信）
+   ============================================================ */
+.mail-row {
+  display: flex; gap: 22px; align-items: center; justify-content: center;
+  flex-wrap: wrap;
+}
+.mailbox { flex: none; }
+.mail-list { display: flex; flex-direction: column; gap: 12px; width: min(450px, 100%); }
+.letter {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  background: var(--panel); text-align: left;
+}
+.letter.sel { --b: var(--gold); }
+.letter .ico { flex: none; }
+.letter .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.letter .lbl { font-size: 11px; color: var(--gray); letter-spacing: .15em; }
+.letter .val {
+  color: var(--white); font-size: 12.5px; font-weight: 700;
+  letter-spacing: .05em; overflow-wrap: anywhere; user-select: text;
+}
+.letter .act { flex: none; font-size: 11px; color: var(--gold); }
+.letter .act a { color: var(--gold); display: inline-block; padding: 6px; }
+
+/* ---------- 手柄操作提示条 ---------- */
+.controls {
+  display: flex; justify-content: center; flex-wrap: wrap;
+  gap: 10px 18px; padding: 14px 10px 6px;
+  color: var(--line); font-size: 11px; letter-spacing: .1em;
+}
+.key {
+  color: var(--white); background: var(--ink2);
+  border: 2px solid var(--line); padding: 2px 7px;
+  font-size: 10px; letter-spacing: .08em;
+}
+
+.foot { text-align: center; color: #4a5578; font-size: 10px; letter-spacing: .2em; margin-top: 12px; }
+
+/* ---------- 全局 Toast（复制成功等提示） ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 28px; z-index: 100;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--white); color: var(--ink);
+  font-weight: 700; font-size: 13px; letter-spacing: .08em;
+  padding: 8px 16px; border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 rgba(0,0,0,.5);
+  opacity: 0; pointer-events: none;
+  transition: opacity .15s, transform .15s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 移动端兜底 ---------- */
+@media (max-width: 680px) {
+  .screen { height: min(560px, 74vh); }
+  .title-row { flex-direction: column; gap: 16px; }
+  .about-row { flex-direction: column; align-items: center; }
+  .stats-wrap { grid-template-columns: 1fr; }
+  .mail-row { flex-direction: column; gap: 16px; }
+  .menu-item .sub { display: none; }
+  .tagline { font-size: 14px; }
+  .items-grid { gap: 10px; }
+}
+
+/* 减少动态偏好：停掉所有动画，光标保持可见 */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="console">
+  <!-- 卡带标签 + 电源灯 -->
+  <div class="console-label"><span class="led"></span>LIN CHUAN'S PIXEL HOMEPAGE<span class="led"></span></div>
+
+  <!-- 游戏机外壳 -->
+  <div class="console-frame px-box">
+    <!-- 游戏屏幕 -->
+    <div class="screen px-box" id="screen">
+      <!-- HUD 场景抬头 -->
+      <div class="hud"><span id="hud-name">标题画面</span><span class="hud-r">林川物语 v1.0</span></div>
+      <!-- 星空 -->
+      <div id="stars" aria-hidden="true"></div>
+
+      <!-- ============ 场景一：标题画面 ============ -->
+      <section class="scene active" id="scene-title" aria-label="标题画面，按回车开始">
+        <div class="scene-inner">
+          <p class="presents">★ LIN CHUAN PRESENTS ★</p>
+          <div class="title-row">
+            <!-- 「林川」两个大字由 JS 用 box-shadow 点阵逐像素拼出 -->
+            <div id="title-glyphs" aria-label="林川"></div>
+            <!-- 16x16 像素小人 -->
+            <div id="title-hero" aria-hidden="true"></div>
+          </div>
+          <p class="tagline">白天写代码 · 晚上拍胶片</p>
+          <p class="tagline-en">INDIE DEVELOPER × FILM PHOTOGRAPHER — HANGZHOU</p>
+          <p class="press-start" id="press-start">▶ PRESS START ◀</p>
+          <p class="credit">© 2026 LINCHUAN SOFT · MADE IN HANGZHOU</p>
+        </div>
+      </section>
+
+      <!-- ============ 场景二：主菜单 ============ -->
+      <section class="scene" id="scene-menu" aria-label="主菜单">
+        <div class="scene-inner">
+          <p class="scene-title">主菜单 <span>MAIN MENU</span></p>
+          <ul class="menu" id="menu-list"><!-- JS 渲染菜单项 --></ul>
+          <p class="hint">↑ ↓ 选择 · ENTER 进入 · 也可以直接点击菜单项</p>
+        </div>
+      </section>
+
+      <!-- ============ 场景三：关于我（RPG 对话框） ============ -->
+      <section class="scene" id="scene-about" aria-label="关于我">
+        <div class="scene-inner">
+          <p class="scene-title">关于我 · 角色对话 <span>PROFILE</span></p>
+          <div class="about-row">
+            <!-- 小舞台：像素小人站在草地上 -->
+            <div class="stage" aria-hidden="true">
+              <div class="sprite-holder" id="about-stage"></div>
+              <div class="ground"></div>
+            </div>
+            <!-- RPG 对话框：白底黑字 + 逐字打印 + ▼ 继续 -->
+            <div class="dialog px-box" id="dialog" role="button" tabindex="0" aria-label="对话，点击继续">
+              <div class="nameplate">
+                <span>林川 · Lv.32 独立开发者</span>
+                <span class="page-num" id="about-page-num">1/5</span>
+              </div>
+              <p class="text"><span id="about-text"></span><span class="caret" id="about-caret">▍</span></p>
+              <span class="next" id="about-next">▼</span>
+            </div>
+          </div>
+          <p class="hint">ENTER / 点击 = 继续对话 · ESC 返回主菜单</p>
+        </div>
+      </section>
+
+      <!-- ============ 场景四：我的作品（道具栏） ============ -->
+      <section class="scene" id="scene-items" aria-label="我的作品道具栏">
+        <div class="scene-inner">
+          <p class="scene-title">我的作品 · 道具栏 <span>INVENTORY</span></p>
+          <div class="items-grid" id="items-grid"><!-- JS 渲染道具卡 --></div>
+          <!-- 当前选中道具的详情 -->
+          <div class="item-detail px-box">
+            <p class="d-name" id="item-name"></p>
+            <p class="d-desc" id="item-desc"></p>
+            <p class="d-flavor" id="item-flavor"></p>
+            <div class="d-foot">
+              <span class="d-stats" id="item-stats"></span>
+              <button class="btn px-thin" id="equip-btn">装备（ENTER）</button>
+            </div>
+          </div>
+          <p class="hint">↑ ↓ ← → 选择道具 · ENTER 装备/取下 · ESC 返回</p>
+        </div>
+      </section>
+
+      <!-- ============ 场景五：技能属性（状态面板） ============ -->
+      <section class="scene" id="scene-stats" aria-label="技能属性">
+        <div class="scene-inner">
+          <p class="scene-title">技能属性 · 状态面板 <span>STATUS</span></p>
+          <div class="stats-wrap">
+            <!-- 左：角色卡 -->
+            <div class="stat-id px-box">
+              <div class="id-row">
+                <div id="stat-hero" aria-hidden="true"></div>
+                <div>
+                  <p class="id-name">林川 <span>LIN CHUAN · Lv.32</span></p>
+                  <p class="id-job">职业：独立开发者 / 胶片摄影师</p>
+                  <p class="id-loc">所在地：杭州</p>
+                  <p class="id-exp">EXP 1024 / 2048</p>
+                </div>
+              </div>
+              <div class="hpmp">
+                <div class="hpline"><span class="lbl">HP·写作热情</span><div class="bar px-thin"><i style="--w:100%"></i></div><span class="num">24/24</span></div>
+                <div class="hpline"><span class="lbl">MP·咖啡因</span><div class="bar mp px-thin"><i style="--w:75%"></i></div><span class="num">12/16</span></div>
+              </div>
+            </div>
+            <!-- 右：技能 / 兴趣 / 装备 -->
+            <div class="stat-skills px-box">
+              <p class="sub-h">— 技能 SKILLS —</p>
+              <div class="stat"><span class="k">TypeScript</span><div class="bar px-thin"><i style="--w:95%;--c:#41a6f6"></i></div><span class="v">Lv.95</span></div>
+              <div class="stat"><span class="k">React</span><div class="bar px-thin"><i style="--w:90%;--c:#73eff7"></i></div><span class="v">Lv.90</span></div>
+              <div class="stat"><span class="k">SwiftUI</span><div class="bar px-thin"><i style="--w:85%;--c:#ffcd75"></i></div><span class="v">Lv.85</span></div>
+              <div class="stat"><span class="k">摄影</span><div class="bar px-thin"><i style="--w:88%;--c:#38b764"></i></div><span class="v">Lv.88</span></div>
+              <div class="stat"><span class="k">写作</span><div class="bar px-thin"><i style="--w:80%;--c:#a7f070"></i></div><span class="v">Lv.80</span></div>
+              <p class="sub-h">— 兴趣 TRAITS —</p>
+              <div class="traits">
+                <span class="chip">胶片摄影 Lv.87</span>
+                <span class="chip">徒步 Lv.75</span>
+                <span class="chip">煮咖啡 Lv.82</span>
+                <span class="chip">收集旧地图 Lv.70</span>
+              </div>
+              <p class="sub-h">— 装备 EQUIPMENT —</p>
+              <p class="equip-line">「老胶片机」魅力 +3 ·「MacBook」生产力 +5 ·「旧地图 ×27」</p>
+            </div>
+          </div>
+          <p class="hint">ESC / ENTER 返回主菜单</p>
+        </div>
+      </section>
+
+      <!-- ============ 场景六：经历（冒险日志） ============ -->
+      <section class="scene" id="scene-journal" aria-label="经历冒险日志">
+        <div class="scene-inner">
+          <p class="scene-title">经历 · 冒险日志 <span>JOURNAL</span></p>
+          <div class="journal" id="journal-list"><!-- JS 渲染章节 --></div>
+          <p class="hint">↑ ↓ 翻看章节 · ENTER 查看批注 · ESC 返回</p>
+        </div>
+      </section>
+
+      <!-- ============ 场景七：联系（信笺宝箱） ============ -->
+      <section class="scene" id="scene-contact" aria-label="联系信笺宝箱">
+        <div class="scene-inner">
+          <p class="scene-title">联系 · 信笺宝箱 <span>MAILBOX</span></p>
+          <div class="mail-row">
+            <!-- 像素信箱 -->
+            <div class="mailbox" id="mailbox" aria-hidden="true"></div>
+            <div class="mail-list" id="mail-list"><!-- JS 渲染信件 --></div>
+          </div>
+          <p class="hint">↑ ↓ 选择信件 · ENTER / 点击 = 复制内容 · 「打开」可访问链接 · ESC 返回</p>
+        </div>
+      </section>
+
+      <!-- CRT 效果层 -->
+      <div class="scanlines" aria-hidden="true"></div>
+      <div class="vignette" aria-hidden="true"></div>
+    </div>
+
+    <!-- 手柄操作提示 -->
+    <div class="controls">
+      <span><span class="key">↑ ↓ ← →</span> 移动</span>
+      <span><span class="key">ENTER</span> 确认</span>
+      <span><span class="key">ESC</span> 返回</span>
+      <span><span class="key">M</span> 静音</span>
+      <span><span class="key">鼠标</span> 也可点击</span>
+    </div>
+  </div>
+
+  <p class="foot">白天写代码 · 晚上拍胶片 — A ONE-MAN PIXEL GAME</p>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<noscript><p style="color:#f4f4f4">本页面是一个小游戏，需要开启 JavaScript 才能启动。</p></noscript>
+
+<script>
+/* ============================================================
+   像素游戏逻辑（零依赖，全部内联）
+   结构：像素渲染器 → 音效引擎 → 场景状态机 → 各场景逻辑 → 键盘控制
+   ============================================================ */
+(() => {
+'use strict';
+
+const $  = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+/* ============================================================
+   1. 像素点阵数据（字符画 + 调色板）
+   ============================================================ */
+
+/* 16x16 像素小人（林川）—— 头像/装饰 */
+const HERO = [
+  '................',
+  '.....HHHHHH.....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHSSSSHH....',
+  '....HSSSSSSH....',
+  '....HSESSESH....',
+  '....HSSMMSSH....',
+  '....HSSSSSSH....',
+  '.....SSSSSS.....',
+  '....TTTTTTTT....',
+  '...TTTTTTTTTT...',
+  '...STTTTTTTTS...',
+  '....PPPPPPPP....',
+];
+const HERO_PAL = {
+  H: '#29366f',   /* 头发 */
+  S: '#ffcd75',   /* 皮肤 */
+  E: '#1a1c2c',   /* 眼睛 */
+  M: '#1a1c2c',   /* 嘴 */
+  T: '#3b5dc9',   /* 上衣 */
+  P: '#333c57',   /* 裤子 */
+};
+
+/* 「林」字 12x12 点阵（两个木字旁） */
+const GLYPH_LIN = [
+  '..##....##..',
+  '..##....##..',
+  '..##....##..',
+  '..##....##..',
+  '############',
+  '..##....##..',
+  '..##....##..',
+  '.####..####.',
+  '#.##.##.##.#',
+  '#.##.##.##.#',
+  '#....##....#',
+  '............',
+];
+/* 「川」字 12x12 点阵 */
+const GLYPH_CHUAN = [
+  '............',
+  '##.....##.##',
+  '##.....##.##',
+  '.#.....##.##',
+  '.#.....##.##',
+  '.#.....##.##',
+  '.#.....##.##',
+  '.#.....##.##',
+  '.#.....##.##',
+  '.#.....##.##',
+  '.#.....##.##',
+  '............',
+];
+
+/* 8x8 道具图标 */
+const ICON_CAMERA = [
+  '..DDDD..',
+  '.DDDDDD.',
+  'DDLLLLDD',
+  'DLWLLLDD',
+  'DDLLLLDD',
+  '.DDDDDD.',
+  '.DD..DD.',
+  '..DDDD..',
+];
+const ICON_NOTEPAD = [
+  'WWWWWWW.',
+  'WGGGGGW.',
+  'WWWWWWW.',
+  'WGGGGGW.',
+  'WWWWWWW.',
+  'WGGGGGW.',
+  'WWWWWWRR',
+  '......RR',
+];
+const ICON_BOOK = [
+  '.RRRRRR.',
+  'RRWWWWRR',
+  'RRWWWWRR',
+  'RRWWWWRR',
+  'RRWWWWRR',
+  '.RRRRRR.',
+  '........',
+  '........',
+];
+const ICON_RADIO = [
+  '....C...',
+  '....C...',
+  '.DDDDDD.',
+  'DDSSSSDD',
+  'DSWSSSSD',
+  'DDSSSSDD',
+  '.DDDDDD.',
+  '........',
+];
+/* 信箱 / 信件 / 猫（GitHub）/ 地图钉 */
+const ICON_MAILBOX = [
+  'RRRRRRRRRR..',
+  'RRRRRRRRRR..',
+  'RRWWWWRRRR..',
+  'RRRRRRRRRR..',
+  'RRRRRRRRRR..',
+  '....BB......',
+  '....BB......',
+  '....BB......',
+  '....BB......',
+  '...BBBB.....',
+];
+const ICON_ENVELOPE = [
+  'WWWWWWWW',
+  'WWWWWWWW',
+  'WWWWWWWW',
+  'WWWRRWWW',
+  'WWWRRWWW',
+  'WWWWWWWW',
+  '........',
+  '........',
+];
+const ICON_CAT = [
+  'CC....CC',
+  'CC....CC',
+  'CCCCCCCC',
+  'CCCCCCCC',
+  'CC.EE.CC',
+  'CCCCCCCC',
+  'CC....CC',
+  '........',
+];
+const ICON_PIN = [
+  '.RRRR...',
+  'RRWWRR..',
+  'RRWWRR..',
+  '.RRRR...',
+  '..RR....',
+  '..RR....',
+  '........',
+  '........',
+];
+/* 装饰：太阳 / 灌木 / 脚下影子 */
+const ICON_SUN = [
+  '.YYYY..',
+  'YYYYYYY',
+  'YYYYYYY',
+  'YYYYYYY',
+  'YYYYYYY',
+  '.YYYYY.',
+];
+const ICON_BUSH = [
+  '..GGGGG.',
+  '.GGGGGGG',
+  'GGGGGGGG',
+  'GGGGGGGG',
+];
+const ICON_SHADOW = [
+  '..DDDDDDDD..',
+  '.DDDDDDDDDD.',
+];
+
+/* 图标通用调色板 */
+const ICON_PAL = {
+  D: '#333c57', L: '#41a6f6', W: '#f4f4f4', G: '#2a6b47',
+  R: '#b13e53', S: '#566c86', C: '#73eff7', B: '#8a5a44',
+  Y: '#ffcd75', E: '#1a1c2c',
+};
+
+/* ============================================================
+   2. 像素渲染器：把字符画渲染成 div box-shadow 点阵
+   ============================================================ */
+function pixelEl(rows, palette, px) {
+  const shadows = [];
+  rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x];
+      if (ch === '.' || ch === ' ') continue;
+      const color = palette[ch] || ch;
+      shadows.push(`${x * px}px ${y * px}px 0 0 ${color}`);
+    }
+  });
+  const dot = document.createElement('i');
+  dot.className = 'pix';
+  dot.style.cssText = `width:${px}px;height:${px}px;box-shadow:${shadows.join(',')}`;
+  const box = document.createElement('div');
+  box.className = 'pix-box';
+  box.setAttribute('aria-hidden', 'true');
+  box.style.cssText = `width:${rows[0].length * px}px;height:${rows.length * px}px`;
+  box.appendChild(dot);
+  return box;
+}
+
+/* ============================================================
+   3. 8-bit 音效引擎（Web Audio 方波哔声，仅在用户交互后播放）
+   ============================================================ */
+let actx = null;
+let muted = false;
+
+function ensureAudio() {
+  if (!actx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) actx = new AC();
+  }
+  if (actx && actx.state === 'suspended') actx.resume();
+}
+
+function tone(freq, dur, opts = {}) {
+  if (!actx || muted) return;
+  const { type = 'square', vol = 0.045, delay = 0, slide } = opts;
+  const t0 = actx.currentTime + delay;
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, t0 + dur);
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(actx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.03);
+}
+
+const SFX = {
+  move()    { tone(760, 0.04, { vol: 0.03 }); },
+  confirm() { tone(523, 0.06); tone(784, 0.08, { delay: 0.06 }); },
+  back()    { tone(587, 0.05, { slide: 294 }); tone(440, 0.05, { delay: 0.05, slide: 220 }); },
+  type()    { tone(1568, 0.012, { vol: 0.012 }); },
+  start()   { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.09, { delay: i * 0.07 })); },
+  equip()   { tone(659, 0.05); tone(988, 0.06, { delay: 0.05 }); tone(1319, 0.09, { delay: 0.1 }); },
+  copy()    { tone(880, 0.05, { vol: 0.04 }); tone(1175, 0.07, { delay: 0.06 }); },
+};
+
+/* ============================================================
+   4. 场景状态机
+   ============================================================ */
+const HUD_NAME = {
+  title:   '标题画面 · TITLE',
+  menu:    '主菜单 · MAIN MENU',
+  about:   '关于我 · PROFILE',
+  items:   '道具栏 · INVENTORY',
+  stats:   '角色属性 · STATUS',
+  journal: '冒险日志 · JOURNAL',
+  contact: '信笺宝箱 · MAILBOX',
+};
+let cur = 'title';
+
+function goto(name) {
+  cur = name;
+  // 切换场景显隐（inert 让隐藏场景不可聚焦）
+  $$('.scene').forEach((s) => {
+    const on = s.id === 'scene-' + name;
+    s.classList.toggle('active', on);
+    if (on) s.inert = false; else s.inert = true;
+  });
+  stopTyping();
+  if (name === 'menu')    setMenu(menuIndex);
+  if (name === 'about')   startAbout();
+  if (name === 'items')   setItem(itemIndex);
+  if (name === 'journal') setJournal(journalIndex);
+  if (name === 'contact') setMail(mailIndex);
+  // CRT 闪屏过渡
+  const screenEl = $('#screen');
+  screenEl.classList.remove('flicker');
+  void screenEl.offsetWidth; // 强制重排以重启动画
+  screenEl.classList.add('flicker');
+  $('#hud-name').textContent = HUD_NAME[name] || '';
+}
+
+/* ============================================================
+   5. 主菜单（游戏菜单列表 + 闪烁 ▸ 光标）
+   ============================================================ */
+const MENU = [
+  { id: 'about',   zh: '关于我',   en: 'PROFILE', sub: 'RPG 对话 · 认识主角' },
+  { id: 'items',   zh: '我的作品', en: 'WORKS',   sub: '道具栏 · 四个伙伴' },
+  { id: 'stats',   zh: '技能属性', en: 'SKILLS',  sub: '状态面板 · 加点了吗' },
+  { id: 'journal', zh: '经历',     en: 'JOURNAL', sub: '冒险日志 · 主线回顾' },
+  { id: 'contact', zh: '联系',     en: 'CONTACT', sub: '信笺宝箱 · 写信给我' },
+];
+let menuIndex = 0;
+
+function renderMenu() {
+  const list = $('#menu-list');
+  list.innerHTML = '';
+  MENU.forEach((m, i) => {
+    const li = document.createElement('li');
+    li.className = 'menu-item';
+    li.setAttribute('role', 'button');
+    li.setAttribute('tabindex', '0');
+    li.innerHTML = `
+      <span class="cursor">▸</span>
+      <span class="zh">${m.zh}</span>
+      <span class="en">${m.en}</span>
+      <span class="sub">${m.sub}</span>`;
+    // 移动端兜底：点击直接进入
+    li.addEventListener('click', () => { ensureAudio(); SFX.confirm(); goto(m.id); });
+    list.appendChild(li);
+  });
+}
+
+function setMenu(i) {
+  menuIndex = (i + MENU.length) % MENU.length;
+  $$('#menu-list .menu-item').forEach((li, k) => li.classList.toggle('sel', k === menuIndex));
+}
+
+/* ============================================================
+   6. 关于我 —— RPG 对话框（逐字打印 + ▼ 继续提示）
+   ============================================================ */
+const ABOUT = [
+  '你好，我是林川。白天写代码，晚上拍胶片。',
+  '之前在杭州的一家互联网大厂做了五年前端工程师。2023 年，我辞了职，成为一名独立开发者。',
+  '我相信小而美的产品——做给自己用的工具，写给人看的故事。',
+  '现在我带着四个「伙伴」冒险：拾光、码字、岛读、午后电台。去道具栏看看吧。',
+  '随时按 ESC 回主菜单。祝你在我的世界里玩得开心！',
+];
+let aboutPage = 0;
+let typeTimer = null;
+let aboutDone = false;
+
+function startAbout() {
+  aboutPage = 0;
+  typePage();
+}
+
+function typePage() {
+  const full = ABOUT[aboutPage];
+  const textEl = $('#about-text');
+  $('#about-page-num').textContent = `${aboutPage + 1}/${ABOUT.length}`;
+  let i = 0;
+  aboutDone = false;
+  $('#about-next').style.visibility = 'hidden';
+  $('#about-caret').style.visibility = 'visible';
+  stopTyping();
+  textEl.textContent = '';
+  typeTimer = setInterval(() => {
+    i++;
+    textEl.textContent = full.slice(0, i);
+    if (i % 2 === 0) SFX.type(); // 每两个字一声轻哔
+    if (i >= full.length) {
+      stopTyping();
+      aboutDone = true;
+      $('#about-caret').style.visibility = 'hidden';
+      $('#about-next').style.visibility = 'visible';
+    }
+  }, 40);
+}
+
+function stopTyping() {
+  if (typeTimer) { clearInterval(typeTimer); typeTimer = null; }
+}
+
+function advanceAbout() {
+  if (!aboutDone) {
+    // 打字中：立即显示全文
+    stopTyping();
+    $('#about-text').textContent = ABOUT[aboutPage];
+    aboutDone = true;
+    $('#about-caret').style.visibility = 'hidden';
+    $('#about-next').style.visibility = 'visible';
+    SFX.confirm();
+    return;
+  }
+  if (aboutPage < ABOUT.length - 1) {
+    aboutPage++;
+    SFX.confirm();
+    typePage();
+  } else {
+    SFX.back();
+    goto('menu');
+  }
+}
+
+/* ============================================================
+   7. 我的作品 —— 道具栏（像素卡片 + 稀有度 + 装备玩法）
+   ============================================================ */
+const ITEMS = [
+  {
+    name: '拾光', en: 'SHIGUANG', rarity: 'SSR', stars: 3, kind: '胶片相机 App',
+    icon: ICON_CAMERA,
+    desc: '一台装在手机里的胶片相机，模拟 Kodak Portra 400、Fuji Velvia 50 等 12 种经典胶卷的色彩。',
+    flavor: '「按下快门，等它显影三秒。」',
+    stats: '拍照 +12 · 情怀 +99',
+  },
+  {
+    name: '码字', en: 'MAZI', rarity: 'SR', stars: 2, kind: 'Markdown 写作工具',
+    icon: ICON_NOTEPAD,
+    desc: '本地优先的 Markdown 写作工具。所有文字都只属于你的硬盘，不联网也能写。',
+    flavor: '「关掉网络，世界就安静了。」',
+    stats: '专注 +15 · 字数 +∞',
+  },
+  {
+    name: '岛读', en: 'DAODU', rarity: 'R', stars: 1, kind: '读书笔记 App',
+    icon: ICON_BOOK,
+    desc: '给纸质书做读书笔记的 App：拍下书页，写下想法，让每本书都有一座自己的岛。',
+    flavor: '「每本书都是一座岛。」',
+    stats: '阅读 +10 · 收藏 +30',
+  },
+  {
+    name: '午后电台', en: 'AFTERNOON RADIO', rarity: 'SR', stars: 2, kind: '城市声音网站',
+    icon: ICON_RADIO,
+    desc: '一个收集城市声音的网站：西湖的风、河坊街的叫卖、雨打在旧瓦上的声音。',
+    flavor: '「戴上耳机，去城市里散步。」',
+    stats: '治愈 +20 · 采样 +88',
+  },
+];
+let itemIndex = 0;
+const equipped = new Set([0]); // 默认装备「拾光」
+
+function renderItems() {
+  const grid = $('#items-grid');
+  grid.innerHTML = '';
+  ITEMS.forEach((it, i) => {
+    const card = document.createElement('button');
+    card.className = 'item-card px-box';
+    card.dataset.i = i;
+    card.setAttribute('aria-label', `道具：${it.name}`);
+    card.innerHTML = `
+      <span class="sel-mark">▶</span>
+      <span class="icon"></span>
+      <span class="rarity ${it.rarity}">${it.rarity} ${'★'.repeat(it.stars)}</span>
+      <span class="nm">${it.name}</span>
+      <span class="en">${it.en}</span>
+      <span class="eq-badge">✦ 已装备</span>`;
+    card.querySelector('.icon').appendChild(pixelEl(it.icon, ICON_PAL, 5));
+    // 移动端兜底：点击聚焦，再点详情区装备按钮
+    card.addEventListener('click', () => { ensureAudio(); SFX.move(); setItem(i); });
+    grid.appendChild(card);
+  });
+  syncItems();
+}
+
+function setItem(i) {
+  itemIndex = Math.max(0, Math.min(ITEMS.length - 1, i));
+  const it = ITEMS[itemIndex];
+  $$('#items-grid .item-card').forEach((c, k) => c.classList.toggle('focus', k === itemIndex));
+  $('#item-name').innerHTML = `${it.name} <span class="rar ${it.rarity}">${it.rarity} ${'★'.repeat(it.stars)} · ${it.en}</span>`;
+  $('#item-desc').textContent = it.desc;
+  $('#item-flavor').textContent = it.flavor;
+  $('#item-stats').textContent = it.stats;
+  $('#equip-btn').textContent = equipped.has(itemIndex) ? '取下（ENTER）' : '装备（ENTER）';
+}
+
+function toggleEquip() {
+  const it = ITEMS[itemIndex];
+  if (equipped.has(itemIndex)) {
+    equipped.delete(itemIndex);
+    toast(`已取下「${it.name}」`);
+  } else {
+    equipped.add(itemIndex);
+    toast(`已装备「${it.name}」！`);
+  }
+  SFX.equip();
+  syncItems();
+  setItem(itemIndex); // 刷新按钮文案
+}
+
+function syncItems() {
+  $$('#items-grid .item-card').forEach((c, k) => c.classList.toggle('eq', equipped.has(k)));
+}
+
+/* ============================================================
+   8. 技能属性 —— 状态面板（静态 HTML + 像素小人）
+   ============================================================ */
+function renderStats() {
+  $('#stat-hero').appendChild(pixelEl(HERO, HERO_PAL, 5));
+}
+
+/* ============================================================
+   9. 经历 —— 冒险日志（章节卡片）
+   ============================================================ */
+const CHAPTERS = [
+  {
+    tag: 'CH.01', years: '2018 – 2023', kind: '主线任务',
+    title: '互联网大厂 · 前端工程师',
+    text: '五年时间，与 React 和 TypeScript 并肩作战。修过半夜的线上事故，也上线过几千万人用的页面。',
+    note: '掉落物：稳定的工程能力、一柜子工牌。',
+  },
+  {
+    tag: 'CH.02', years: '2023 – 现在', kind: '主线任务',
+    title: '独立开发者',
+    text: '2023 年辞职，一个人成立「工作室」。主攻小而美的产品：做给自己用的工具，写给人看的故事。',
+    note: '掉落物：自由、黑眼圈、四个小产品。',
+  },
+  {
+    tag: 'SIDE', years: '进行中', kind: '支线任务',
+    title: '胶片摄影师',
+    text: '背着老相机在城市里捡光影。徒步、煮咖啡、收集旧地图，都是支线里攒下的隐藏道具。',
+    note: '隐藏道具：37 卷还没冲的胶卷。',
+  },
+  {
+    tag: '???', years: '2026', kind: '未解锁',
+    title: '下一关',
+    text: '新项目正在开发中，敬请期待。',
+    note: '未解锁。按 ESC 回到现在。',
+  },
+];
+let journalIndex = 0;
+
+function renderJournal() {
+  const list = $('#journal-list');
+  list.innerHTML = '';
+  CHAPTERS.forEach((c, i) => {
+    const el = document.createElement('div');
+    el.className = 'chapter px-box';
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.innerHTML = `
+      <div class="ch-head">
+        <span class="ch-tag">${c.tag}</span>
+        <span class="ch-years">${c.years}</span>
+        <span class="ch-kind">${c.kind}</span>
+      </div>
+      <p class="ch-title">${c.title}</p>
+      <p class="ch-text">${c.text}</p>`;
+    el.addEventListener('click', () => { ensureAudio(); SFX.move(); setJournal(i); });
+    list.appendChild(el);
+  });
+}
+
+function setJournal(i) {
+  journalIndex = (i + CHAPTERS.length) % CHAPTERS.length;
+  $$('#journal-list .chapter').forEach((c, k) => c.classList.toggle('sel', k === journalIndex));
+}
+
+/* ============================================================
+   10. 联系 —— 信笺宝箱（像素信箱 + 三封信 + 一键复制）
+   ============================================================ */
+const MAILS = [
+  { label: '电子邮箱', en: 'E-MAIL', value: 'linchuan@example.com',
+    href: 'mailto:linchuan@example.com', icon: ICON_ENVELOPE },
+  { label: 'GitHub', en: 'CODE', value: 'github.com/linchuan-dev',
+    href: 'https://github.com/linchuan-dev', icon: ICON_CAT },
+  { label: '实体地址', en: 'HOME', value: '杭州 · 西湖区 · 某条开满桂花的巷子',
+    href: null, icon: ICON_PIN },
+];
+let mailIndex = 0;
+
+function renderMails() {
+  $('#mailbox').appendChild(pixelEl(ICON_MAILBOX, ICON_PAL, 6));
+  const list = $('#mail-list');
+  list.innerHTML = '';
+  MAILS.forEach((m, i) => {
+    const letter = document.createElement('button');
+    letter.className = 'letter px-box';
+    letter.setAttribute('aria-label', `${m.label}：${m.value}`);
+    letter.innerHTML = `
+      <span class="ico"></span>
+      <span class="txt">
+        <span class="lbl">${m.label} · ${m.en}</span>
+        <span class="val">${m.value}</span>
+      </span>
+      <span class="act">${m.href ? '<a href="' + m.href + '" target="_blank" rel="noopener">打开</a>' : '复制'}</span>`;
+    letter.querySelector('.ico').appendChild(pixelEl(m.icon, ICON_PAL, 5));
+    // 点击 = 选中并复制（移动端兜底）；「打开」链接不触发复制
+    letter.addEventListener('click', (e) => {
+      if (e.target.closest('a')) return;
+      ensureAudio(); setMail(i); copyMail();
+    });
+    list.appendChild(letter);
+  });
+}
+
+function setMail(i) {
+  mailIndex = Math.max(0, Math.min(MAILS.length - 1, i));
+  $$('#mail-list .letter').forEach((l, k) => l.classList.toggle('sel', k === mailIndex));
+}
+
+function copyMail() {
+  copyText(MAILS[mailIndex].value);
+}
+
+/* ============================================================
+   11. 剪贴板与 Toast
+   ============================================================ */
+function copyText(text) {
+  const done = () => { SFX.copy(); toast(`已复制：${text}`); };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+/* 兼容降级：execCommand 复制 */
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('复制失败，请手动复制'); }
+  ta.remove();
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* ============================================================
+   12. 标题画面
+   ============================================================ */
+function renderTitle() {
+  // 「林川」：box-shadow 点阵逐像素拼字
+  const glyphs = $('#title-glyphs');
+  glyphs.appendChild(pixelEl(GLYPH_LIN, { '#': '#f4f4f4' }, 6));
+  glyphs.appendChild(pixelEl(GLYPH_CHUAN, { '#': '#ffcd75' }, 6));
+  // 标题画面上的 16x16 小人
+  const hero = pixelEl(HERO, HERO_PAL, 6);
+  hero.classList.add('bob');
+  $('#title-hero').appendChild(hero);
+}
+
+function renderAboutStage() {
+  const stage = $('#about-stage');
+  // 像素小人 + 脚下影子
+  const shadow = pixelEl(ICON_SHADOW, { D: 'rgba(0,0,0,.45)' }, 4);
+  shadow.style.cssText += ';position:absolute;bottom:-2px;left:50%;transform:translateX(-50%)';
+  stage.appendChild(shadow);
+  const hero = pixelEl(HERO, HERO_PAL, 5);
+  hero.classList.add('bob');
+  hero.style.cssText += ';z-index:1';
+  stage.appendChild(hero);
+  // 手里的相机 / 太阳 / 灌木
+  const cam = pixelEl(ICON_CAMERA, ICON_PAL, 5);
+  cam.style.cssText += ';position:absolute;right:56px;bottom:26px;z-index:2';
+  stage.appendChild(cam);
+  const sun = pixelEl(ICON_SUN, ICON_PAL, 4);
+  sun.style.cssText += ';position:absolute;top:4px;left:14px';
+  stage.appendChild(sun);
+  const bush1 = pixelEl(ICON_BUSH, ICON_PAL, 4);
+  bush1.style.cssText += ';position:absolute;left:6px;bottom:10px';
+  stage.appendChild(bush1);
+  const bush2 = pixelEl(ICON_BUSH, ICON_PAL, 4);
+  bush2.style.cssText += ';position:absolute;right:6px;bottom:10px';
+  stage.appendChild(bush2);
+}
+
+function startGame() {
+  if (cur !== 'title') return;
+  ensureAudio();
+  SFX.start();
+  goto('menu');
+}
+
+/* ============================================================
+   13. 星空背景
+   ============================================================ */
+function makeStars() {
+  const box = $('#stars');
+  const colors = ['#73eff7', '#f4f4f4', '#ffcd75', '#94b0c2'];
+  for (let i = 0; i < 42; i++) {
+    const s = document.createElement('i');
+    s.className = 'star';
+    const sz = Math.random() < 0.2 ? 4 : (Math.random() < 0.5 ? 3 : 2);
+    s.style.cssText =
+      `left:${(Math.random() * 100).toFixed(1)}%;top:${(Math.random() * 100).toFixed(1)}%;` +
+      `width:${sz}px;height:${sz}px;background:${colors[i % 4]};` +
+      `animation-delay:${(Math.random() * 3).toFixed(2)}s;` +
+      `animation-duration:${(1.6 + Math.random() * 2).toFixed(2)}s`;
+    box.appendChild(s);
+  }
+}
+
+/* ============================================================
+   14. 键盘控制（上下选择 / 回车确认 / ESC 返回）
+   ============================================================ */
+document.addEventListener('keydown', (e) => {
+  const k = e.key;
+  const handled = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape'].includes(k)
+    || k === 'z' || k === 'Z' || k === 'm' || k === 'M';
+  if (handled) e.preventDefault();
+  ensureAudio();
+
+  // 静音开关
+  if (k === 'm' || k === 'M') {
+    muted = !muted;
+    toast(muted ? '音效已关闭' : '音效已开启');
+    return;
+  }
+  // 确认类按键忽略长按连发
+  const isConfirm = k === 'Enter' || k === ' ' || k === 'z' || k === 'Z';
+  if (isConfirm && e.repeat) return;
+
+  switch (cur) {
+    case 'title':
+      if (isConfirm) startGame();
+      break;
+
+    case 'menu':
+      if (k === 'ArrowUp')        { SFX.move(); setMenu(menuIndex - 1); }
+      else if (k === 'ArrowDown') { SFX.move(); setMenu(menuIndex + 1); }
+      else if (isConfirm)         { SFX.confirm(); goto(MENU[menuIndex].id); }
+      break;
+
+    case 'about':
+      if (isConfirm) advanceAbout();
+      else if (k === 'Escape') { SFX.back(); goto('menu'); }
+      break;
+
+    case 'items':
+      // 2x2 网格内移动
+      if (k === 'ArrowLeft')  { SFX.move(); setItem(itemIndex % 2 === 1 ? itemIndex - 1 : itemIndex); }
+      else if (k === 'ArrowRight') { SFX.move(); setItem(itemIndex % 2 === 0 && itemIndex < 3 ? itemIndex + 1 : itemIndex); }
+      else if (k === 'ArrowUp')    { SFX.move(); setItem(itemIndex - 2 >= 0 ? itemIndex - 2 : itemIndex); }
+      else if (k === 'ArrowDown')  { SFX.move(); setItem(itemIndex + 2 <= 3 ? itemIndex + 2 : itemIndex); }
+      else if (isConfirm) toggleEquip();
+      else if (k === 'Escape') { SFX.back(); goto('menu'); }
+      break;
+
+    case 'stats':
+      if (isConfirm || k === 'Escape') { SFX.back(); goto('menu'); }
+      break;
+
+    case 'journal':
+      if (k === 'ArrowUp')        { SFX.move(); setJournal(journalIndex - 1); }
+      else if (k === 'ArrowDown') { SFX.move(); setJournal(journalIndex + 1); }
+      else if (isConfirm) toast(CHAPTERS[journalIndex].note);
+      else if (k === 'Escape')    { SFX.back(); goto('menu'); }
+      break;
+
+    case 'contact':
+      if (k === 'ArrowUp')        { SFX.move(); setMail(mailIndex - 1); }
+      else if (k === 'ArrowDown') { SFX.move(); setMail(mailIndex + 1); }
+      else if (isConfirm) copyMail();
+      else if (k === 'Escape')    { SFX.back(); goto('menu'); }
+      break;
+  }
+});
+
+/* ---------- 鼠标/触摸兜底 ---------- */
+$('#scene-title').addEventListener('click', startGame);
+$('#dialog').addEventListener('click', () => { ensureAudio(); if (cur === 'about') advanceAbout(); });
+$('#equip-btn').addEventListener('click', () => { ensureAudio(); toggleEquip(); });
+
+/* ============================================================
+   15. 启动游戏
+   ============================================================ */
+renderMenu();
+renderItems();
+renderJournal();
+renderMails();
+renderTitle();
+renderAboutStage();
+renderStats();
+makeStars();
+goto('title');
+
+})();
+</script>
+</body>
+</html>

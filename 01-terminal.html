@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="林川 (Lin Chuan) 的个人网站 —— 一台 80 年代风格的 CRT 绿磷光终端。白天写代码，晚上拍胶片。">
+<title>林川 · Lin Chuan — LINCHUAN OS</title>
+<!--
+  01-terminal.html · 林川个人终端
+  80 年代 CRT 绿磷光风格：单文件、零外部依赖、纯 CSS 扫描线 + JS 打字机 + 命令行交互
+  用法：直接在浏览器打开，输入 help 开始探索
+-->
+<style>
+/* =====================================================
+   CRT 终端样式：黑底 #33ff66 磷光字 + 多层光晕 + 扫描线
+   ===================================================== */
+
+/* ---------- 变量与基础 ---------- */
+:root{
+  --green: #33ff66;
+  --green-hi: #8dffb3;                    /* 提示符等强调处稍亮 */
+  --green-dim: rgba(51,255,102,.6);
+  --green-faint: rgba(51,255,102,.15);
+  --glow: 0 0 2px rgba(51,255,102,.9),    /* 多层荧光光晕 */
+          0 0 6px rgba(51,255,102,.45),
+          0 0 14px rgba(51,255,102,.22);
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ height:100%; }
+body{
+  background:#000;
+  color:var(--green);
+  font-family:Consolas,"Courier New",monospace;   /* 只用系统等宽字体栈 */
+  font-size:15px;
+  line-height:1.6;
+  text-shadow:var(--glow);
+  display:flex;
+  padding:22px;
+  overflow:auto;
+}
+::selection{ background:var(--green); color:#000; text-shadow:none; }  /* 反色选区 */
+[hidden]{ display:none !important; }
+
+/* ---------- 显示器外壳（机身边框） ---------- */
+.monitor{
+  width:min(980px,100%);
+  height:min(88vh,760px);
+  min-height:460px;
+  margin:auto;                              /* margin:auto 保证居中且可滚动 */
+  display:flex;
+  flex-direction:column;
+  background:#060a06;
+  border:1px solid rgba(51,255,102,.2);
+  border-radius:14px;
+  padding:14px 16px 12px;
+  box-shadow:0 0 90px rgba(51,255,102,.08), inset 0 0 40px rgba(0,0,0,.9);
+}
+.bezel-top{
+  display:flex;
+  justify-content:space-between;
+  font-size:10px;
+  letter-spacing:2px;
+  color:var(--green-dim);
+  text-shadow:0 0 4px rgba(51,255,102,.4);
+  padding:0 2px 10px;
+}
+
+/* ---------- 屏幕：滚动输出区 + 底部状态栏 ---------- */
+.screen{
+  position:relative;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid rgba(51,255,102,.35);
+  border-radius:8px;
+  background:#000;
+  box-shadow:inset 0 0 90px rgba(0,0,0,.75), 0 0 30px rgba(51,255,102,.05);
+  animation:flicker 6s linear infinite;    /* 可选轻微闪烁 */
+}
+/* 屏幕中心一层极淡的磷光渐变 */
+.screen::before{
+  content:"";
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse at center, rgba(51,255,102,.05), transparent 70%);
+  pointer-events:none;
+}
+.screen-inner{
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:16px 18px 12px;
+}
+/* 绿色细滚动条，保持终端质感 */
+.screen-inner::-webkit-scrollbar{ width:10px; height:10px; }
+.screen-inner::-webkit-scrollbar-track{ background:rgba(51,255,102,.06); }
+.screen-inner::-webkit-scrollbar-thumb{ background:rgba(51,255,102,.35); border-radius:5px; }
+
+.statusbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  padding:5px 14px;
+  border-top:1px dashed rgba(51,255,102,.25);
+  font-size:11px;
+  letter-spacing:1px;
+  color:var(--green-dim);
+  text-shadow:0 0 5px rgba(51,255,102,.5);
+}
+
+/* ---------- 输出行 ---------- */
+.line{ white-space:pre-wrap; word-break:break-word; }
+.line.pre{ white-space:pre; overflow-x:auto; }   /* ASCII 表格/字符画不换行，窄屏横向滚动 */
+.line.ascii{ font-size:10px; line-height:1.25; }
+.line.echo{ margin-top:10px; }
+.prompt-now{ color:var(--green-hi); font-weight:bold; }
+
+/* ---------- 输入行 ---------- */
+.inputline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding-top:6px;
+}
+#cmd{
+  flex:1;
+  min-width:0;
+  background:transparent;
+  border:none;
+  outline:none;
+  color:inherit;
+  font:inherit;
+  text-shadow:var(--glow);
+  caret-color:var(--green-hi);
+  padding:0;
+}
+
+/* ---------- 快捷命令功能键（老终端软键样式） ---------- */
+.keys{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  padding:12px 2px 0;
+}
+.keys button{
+  font:inherit;
+  font-size:12px;
+  letter-spacing:1px;
+  color:var(--green);
+  text-shadow:0 0 4px rgba(51,255,102,.6);
+  background:rgba(51,255,102,.06);
+  border:1px solid rgba(51,255,102,.4);
+  border-radius:4px;
+  padding:5px 10px;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.keys button:hover,
+.keys button:focus-visible{
+  background:var(--green);
+  color:#000;
+  text-shadow:none;
+  box-shadow:0 0 14px rgba(51,255,102,.7);
+}
+.keys button:active{ transform:translateY(1px); }
+
+/* ---------- CRT 覆盖层：扫描线 / 扫描亮带 / 暗角 ---------- */
+.scanlines{
+  position:fixed; inset:0;
+  pointer-events:none;
+  z-index:50;
+  background:repeating-linear-gradient(   /* 半透明条纹扫描线 */
+    to bottom,
+    rgba(0,0,0,.28) 0px, rgba(0,0,0,.28) 1px,
+    transparent 1px, transparent 3px
+  );
+  animation:scanmove 10s linear infinite; /* 条纹缓慢向下移动 */
+}
+.scanband{
+  position:fixed; left:0; right:0; top:-90px;
+  height:90px;
+  pointer-events:none;
+  z-index:49;
+  background:linear-gradient(to bottom,
+    transparent,
+    rgba(51,255,102,.07),
+    rgba(51,255,102,.015),
+    transparent);
+  animation:bandmove 7s linear infinite;  /* 一行亮带周期扫过屏幕 */
+}
+.vignette{
+  position:fixed; inset:0;
+  pointer-events:none;
+  z-index:51;
+  background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%);
+}
+
+/* ---------- 动画 ---------- */
+@keyframes flicker{
+  0%,100%{opacity:1}
+  3%{opacity:.97}
+  6%{opacity:1}
+  52%{opacity:.98}
+  53%{opacity:1}
+  71%{opacity:.965}
+  72%{opacity:1}
+}
+@keyframes scanmove{ from{background-position:0 0} to{background-position:0 120px} }
+@keyframes bandmove{ from{transform:translateY(0)} to{transform:translateY(115vh)} }
+@keyframes blink{ 0%,49%{opacity:1} 50%,100%{opacity:0} }
+.stat-blink{ animation:blink 1.2s step-end infinite; }
+
+/* ---------- 移动端 ---------- */
+@media (max-width:640px){
+  body{ padding:8px; font-size:13px; }
+  .monitor{
+    height:calc(100vh - 16px);
+    height:calc(100dvh - 16px);   /* 动态视口，避开移动浏览器地址栏 */
+    min-height:0;
+    border-radius:10px;
+    padding:10px;
+  }
+  .screen-inner{ padding:12px 10px 8px; }
+  .line.ascii{ font-size:8px; }   /* 字符画缩小以适配窄屏 */
+  .statusbar{ font-size:10px; padding:4px 10px; }
+  #cmd{ font-size:16px; }         /* 防止 iOS 聚焦输入框时自动放大页面 */
+  .keys button{ font-size:11px; padding:5px 8px; }
+  .bezel-top{ font-size:9px; letter-spacing:1px; }
+}
+/* 尊重系统"减少动态效果"偏好 */
+@media (prefers-reduced-motion:reduce){
+  .screen,.scanlines,.scanband,.stat-blink{ animation:none !important; }
+}
+</style>
+</head>
+<body>
+
+<main class="monitor">
+  <!-- 机身铭牌 -->
+  <header class="bezel-top">
+    <span>LINCHUAN OS v1.0</span>
+    <span>CRT-01 · 64K RAM · HANGZHOU</span>
+  </header>
+
+  <!-- 屏幕 -->
+  <div class="screen" id="screen">
+    <div class="screen-inner" id="screen-inner">
+      <div id="out" role="log" aria-live="polite"></div>
+      <noscript>本终端需要启用 JavaScript。请开启后再来，咖啡机都替你热着。</noscript>
+
+      <!-- 命令行输入行：开机动画完成后才显示 -->
+      <div class="inputline" id="inputline" hidden>
+        <span class="prompt-now">visitor@linchuan:~$</span>
+        <input id="cmd" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="命令输入">
+      </div>
+    </div>
+
+    <!-- 状态栏：运行状态 / 光标 / 实时时钟 -->
+    <div class="statusbar">
+      <span id="stat-state">READY</span>
+      <span class="stat-blink">■</span>
+      <span id="clock">--:--:--</span>
+    </div>
+  </div>
+
+  <!-- 快捷命令功能键 -->
+  <div class="keys" aria-label="快捷命令">
+    <button type="button" data-cmd="help">F1 HELP</button>
+    <button type="button" data-cmd="about">F2 ABOUT</button>
+    <button type="button" data-cmd="projects">F3 PROJECTS</button>
+    <button type="button" data-cmd="experience">F4 EXPERIENCE</button>
+    <button type="button" data-cmd="skills">F5 SKILLS</button>
+    <button type="button" data-cmd="contact">F6 CONTACT</button>
+    <button type="button" data-cmd="clear">F7 CLEAR</button>
+    <button type="button" data-cmd="reboot">F8 REBOOT</button>
+  </div>
+</main>
+
+<!-- CRT 效果覆盖层（不拦截任何点击） -->
+<div class="scanband"></div>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<script>
+'use strict';
+/* =====================================================
+   终端逻辑：开机动画 → 逐字输出 → 命令行解析
+   ===================================================== */
+const screen      = document.getElementById('screen');
+const screenInner = document.getElementById('screen-inner');
+const out         = document.getElementById('out');
+const inputline   = document.getElementById('inputline');
+const input       = document.getElementById('cmd');
+const clockEl     = document.getElementById('clock');
+const stateEl     = document.getElementById('stat-state');
+
+let inputReady  = false;   /* 开机是否完成 */
+let busy        = false;   /* 是否有命令正在输出 */
+let skipCurrent = false;   /* 用户按 Enter / 点击屏幕时，快进当前打字 */
+const queue     = [];      /* 命令队列，顺序执行 */
+
+/* ---------- 工具函数 ---------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* 字符显示宽度：中日韩全角按 2 列，其余按 1 列（用于字符画表格对齐） */
+function charW(ch){
+  const c = ch.codePointAt(0);
+  return (c >= 0x2E80 && c <= 0x9FFF) ||
+         (c >= 0xF900 && c <= 0xFAFF) ||
+         (c >= 0xFF00 && c <= 0xFFEF) ||
+         (c >= 0x3000 && c <= 0x303F) ? 2 : 1;
+}
+const textWidth = s => Array.from(s).reduce((n, ch) => n + charW(ch), 0);
+const padRight  = (s, w) => s + ' '.repeat(Math.max(0, w - textWidth(s)));
+
+/* 按显示宽度换行，尽量在空格处断行 */
+function wrapText(s, width){
+  const lines = [];
+  let cur = '', lastSpace = -1;
+  for (const ch of s){
+    if (ch === ' ') lastSpace = cur.length;
+    if (textWidth(cur + ch) > width){
+      if (lastSpace > 0){
+        /* 在最近一个空格处断行，余下部分继续拼入下一行 */
+        lines.push(cur.slice(0, lastSpace));
+        cur = cur.slice(lastSpace + 1) + (ch === ' ' ? '' : ch);
+      } else {
+        lines.push(cur);
+        cur = ch === ' ' ? '' : ch;
+      }
+      lastSpace = -1;
+    } else {
+      cur += ch;
+    }
+  }
+  if (cur || !lines.length) lines.push(cur);
+  return lines;
+}
+
+/* ┌─┬─┐ 字符画表格：自动处理中英文混排的对齐与换行 */
+function boxTable(header, rows, widths){
+  const hline = (l, m, r) => l + widths.map(w => '─'.repeat(w)).join(m) + r;
+  const lines = [hline('┌', '┬', '┐')];
+  const renderRow = cells => {
+    const grid = cells.map((c, i) => wrapText(c, widths[i]));
+    const h = Math.max(...grid.map(g => g.length));
+    for (let y = 0; y < h; y++){
+      lines.push('│' + grid.map((g, i) => padRight(g[y] || '', widths[i])).join('│') + '│');
+    }
+  };
+  renderRow(header);
+  lines.push(hline('├', '┼', '┤'));
+  rows.forEach(renderRow);
+  lines.push(hline('└', '┴', '┘'));
+  return lines.join('\n');
+}
+
+/* ---------- 输出与打字机 ---------- */
+function scrollIfNear(){
+  /* 只有用户停在底部附近时才自动跟随滚动，向上翻看时不打扰 */
+  const gap = screenInner.scrollHeight - screenInner.scrollTop - screenInner.clientHeight;
+  if (gap < 120) screenInner.scrollTop = screenInner.scrollHeight;
+}
+
+/* 逐字输出一段文本；skipCurrent 置位时立即显示全部 */
+async function typeBlock(text, opts){
+  opts = opts || {};
+  const speed = opts.speed != null ? opts.speed : 4;
+  const div = document.createElement('div');
+  div.className = 'line' + (opts.cls ? ' ' + opts.cls : '');
+  out.appendChild(div);
+  if (opts.instant){ div.textContent = text; scrollIfNear(); return; }
+  let i = 0;
+  for (const ch of text){
+    if (skipCurrent){ div.textContent = text; break; }
+    div.textContent += ch;
+    if ((i & 7) === 0) scrollIfNear();
+    i++;
+    await sleep(speed);
+  }
+  div.textContent = text;   /* 兜底：保证文本完整 */
+  scrollIfNear();
+}
+
+/* 回显用户输入的命令行 */
+function echo(raw){
+  const div = document.createElement('div');
+  div.className = 'line echo';
+  const p = document.createElement('span');
+  p.className = 'prompt-now';
+  p.textContent = 'visitor@linchuan:~$';
+  div.appendChild(p);
+  div.appendChild(document.createTextNode(' ' + raw));
+  out.appendChild(div);
+  scrollIfNear();
+}
+
+/* =====================================================
+   内容数据（与人物资料保持一致）
+   ===================================================== */
+
+/* ASCII 艺术签名 LIN CHUAN（figlet 风格字形，逐行用 padRight 自动对齐） */
+const GLYPHS = {
+  L: ['_', '| |', '| |', '| |', '| |___', '|_____|'],
+  I: [' ___', '|_ _|', ' | |', ' | |', ' | |', '|___|'],
+  N: ['_   _', '| \\ | |', '|  \\| |', '| |\\  |', '| | \\ |', '|_| \\_|'],
+  C: ['  ____', ' / ___|', '| |', '| |', '| |___', ' \\____|'],
+  H: ['_   _', '| | | |', '| |_| |', '|  _  |', '| | | |', '|_| |_|'],
+  U: ['_   _', '| | | |', '| | | |', '| | | |', '| |_| |', ' \\___/'],
+  A: ['    _', '   / \\', '  / _ \\', ' / ___ \\', '/_/   \\_\\']
+};
+const WORD = ['L', 'I', 'N', ' ', 'C', 'H', 'U', 'A', 'N'];
+const glyphW = g => g === ' ' ? 4 : Math.max(...GLYPHS[g].map(textWidth));
+const BANNER = [0, 1, 2, 3, 4, 5].map(r =>
+  WORD.map(g => g === ' ' ? '    ' : padRight(GLYPHS[g][r] || '', glyphW(g))).join('')
+).join('\n');
+
+/* 开机自检日志 */
+const BOOT_LINES = [
+  'LINCHUAN OS v1.0.0 (build 20260813)',
+  'COPYRIGHT (C) 2023-2026 LINCHUAN STUDIO',
+  '',
+  'MEMORY CHECK  ....... 64K RAM SYSTEM OK',
+  'STORAGE INIT  ....... 512K SSD OK',
+  'KEYBOARD      ....... PS/2 OK',
+  'LENS 35MM     ....... F2.0 OK',
+  'COFFEE LEVEL  ....... 100% OK',
+  'MOTIVATION    ....... OK',
+  '',
+  'LOADING PROFILE ......... DONE',
+  ''
+];
+
+/* 开机完成后的欢迎语 */
+const WELCOME = [
+  'INDEPENDENT DEVELOPER / FILM PHOTOGRAPHER · HANGZHOU',
+  '──────────────────────────────────────────────────',
+  '欢迎来到林川的个人终端，visitor。',
+  '白天写代码，晚上拍胶片。',
+  '输入 help 查看可用命令，或点击屏幕下方的功能键。',
+  '──────────────────────────────────────────────────',
+  ''
+].join('\n');
+
+/* help —— 可用命令列表 */
+const HELP_ROWS = [
+  ['help', '显示本帮助'],
+  ['about', '关于我（简介 · 兴趣）'],
+  ['projects', '项目列表'],
+  ['experience', '工作经历'],
+  ['skills', '技能清单'],
+  ['contact', '联系方式'],
+  ['clear', '清屏'],
+  ['reboot', '重新播放开机动画']
+];
+const HELP_TEXT = [
+  'HELP',
+  '────',
+  ...HELP_ROWS.map(([c, d]) => '  ' + padRight(c, 12) + d),
+  '',
+  '提示',
+  '  也可以直接点击屏幕下方的功能键。',
+  '  系统里还藏了几个彩蛋命令，随便输个词试试。'
+].join('\n');
+
+/* about —— 人物介绍 */
+const ABOUT_TEXT = [
+  'ABOUT',
+  '─────',
+  '',
+  '林川 (Lin Chuan)',
+  '独立开发者 / 胶片摄影师 · 杭州',
+  '',
+  '白天写代码，晚上拍胶片。',
+  '',
+  '曾在互联网大厂做前端工程师，2023 年辞职成为独立开发者。',
+  '相信小而美的产品：做给自己用的工具，写给人看的故事。',
+  '',
+  '兴趣',
+  '  胶片摄影 · 徒步 · 煮咖啡 · 收集旧地图'
+].join('\n');
+
+/* projects —— 字符画表格（列宽按显示宽度自动对齐、自动换行） */
+const PROJECTS_TABLE = boxTable(
+  ['名称', '类型', '状态', '简介'],
+  [
+    ['拾光', 'iOS App', '已上架', '模拟 12 种经典胶卷色彩 胶片相机 App'],
+    ['码字', 'Web / 桌面', '维护中', '本地优先的 Markdown 写作工具'],
+    ['岛读', 'iOS App', '已上架', '给纸质书做读书笔记的 App'],
+    ['午后电台', 'Web', '持续录音', '收集城市声音的网站']
+  ],
+  [8, 10, 8, 26]
+);
+const PROJECTS_TEXT = [
+  'PROJECTS',
+  '────────',
+  PROJECTS_TABLE,
+  '',
+  '全部为独立开发，源码见 github.com/linchuan-dev'
+].join('\n');
+
+/* experience —— 工作经历 */
+const EXPERIENCE_TEXT = [
+  'EXPERIENCE',
+  '──────────',
+  '',
+  '2018 ~ 2023  某互联网公司 · 前端工程师',
+  '             大型 Web 应用 / 组件库 / 性能优化',
+  '             学会了把复杂问题拆成小问题',
+  '',
+  '2023 ~ 现在  独立开发者',
+  '             拾光 / 码字 / 岛读 / 午后电台',
+  '             做给自己用的工具，写给人看的故事'
+].join('\n');
+
+/* skills —— 技能 + 方块进度条 */
+const bar = p => '█'.repeat(Math.round(p / 10)) + '░'.repeat(10 - Math.round(p / 10));
+const SKILLS_TEXT = [
+  'SKILLS',
+  '──────',
+  '',
+  ['TypeScript', 80], ['React', 90], ['SwiftUI', 70],
+  ['胶片摄影', 80], ['写作', 60], ['煮咖啡', 92]
+].map(([n, p]) => padRight(n, 12) + ' ' + bar(p) + ' ' + p + '%').join('\n') +
+  '\n\n注: 煮咖啡不是技能，是生存技能。';
+
+/* contact —— 联系方式 */
+const CONTACT_TEXT = [
+  'CONTACT',
+  '───────',
+  '',
+  padRight('EMAIL', 9) + 'linchuan@example.com',
+  padRight('GITHUB', 9) + 'github.com/linchuan-dev',
+  padRight('CITY', 9) + '杭州',
+  padRight('NOTE', 9) + '回复邮件前，通常会先冲一杯咖啡'
+].join('\n');
+
+/* 彩蛋：coffee / ls */
+const COFFEE_TEXT = [
+  '   (  )',
+  '    ) (',
+  '  ┌──────┐',
+  '  │▇▇▇▇▇▇│',
+  '  │▇▇▇▇▇▇│',
+  '  └──────┘',
+  '',
+  '正在煮咖啡…… 滴滤完成，请慢用。',
+  '今日豆子: 埃塞俄比亚 · 耶加雪菲'
+].join('\n');
+const LS_TEXT = [
+  '.',
+  '├── README.md          先读我',
+  '├── projects/',
+  '│   ├── shiguang.app   拾光 · 胶片相机',
+  '│   ├── mazi.app       码字 · Markdown 写作',
+  '│   ├── daodu.app      岛读 · 读书笔记',
+  '│   └── wuhou-diantai/ 午后电台 · 城市声音',
+  '├── photos/            35mm 底片，别乱翻',
+  '└── coffee.bean        库存告急'
+].join('\n');
+
+/* 命令路由表：命令名 → 输出文本 */
+const ROUTES = {
+  help: HELP_TEXT,
+  about: ABOUT_TEXT,
+  projects: PROJECTS_TEXT,
+  experience: EXPERIENCE_TEXT,
+  skills: SKILLS_TEXT,
+  contact: CONTACT_TEXT,
+  whoami: 'visitor\n（好吧，其实是林川 Lin Chuan，独立开发者 / 胶片摄影师）',
+  ls: LS_TEXT,
+  banner: BANNER,
+  coffee: COFFEE_TEXT,
+  '拾光': '拾光：模拟 12 种经典胶卷色彩的胶片相机 App（iOS）',
+  '码字': '码字：本地优先的 Markdown 写作工具（Web / 桌面）',
+  '岛读': '岛读：给纸质书做读书笔记的 App（iOS）',
+  '午后电台': '午后电台：收集城市声音的网站'
+};
+/* Tab 补全的候选命令 */
+const AUTO = Object.keys(ROUTES).concat(['clear', 'reboot', 'sudo', 'date', 'exit']);
+/* 需要用等宽字符画样式输出的命令 */
+const PRE_MAP = { projects: 2, ls: 2, coffee: 2, banner: 0.8 };
+
+/* ---------- 开机动画 ---------- */
+async function boot(){
+  inputReady = false;
+  busy = true;
+  stateEl.textContent = 'BOOT';
+  inputline.hidden = true;
+  out.innerHTML = '';
+  skipCurrent = false;
+
+  /* 自检日志逐行打出 */
+  for (const ln of BOOT_LINES){
+    if (ln) await typeBlock(ln, { speed: 9 });
+    await sleep(skipCurrent ? 8 : 90);
+  }
+  await sleep(skipCurrent ? 8 : 240);
+
+  /* ASCII 签名 + 欢迎语 */
+  await typeBlock(BANNER, { cls: 'pre ascii', speed: 0.8 });
+  await sleep(skipCurrent ? 8 : 120);
+  await typeBlock(WELCOME, { speed: 6 });
+
+  inputReady = true;
+  busy = false;
+  stateEl.textContent = 'READY';
+  inputline.hidden = false;
+  input.focus();
+}
+
+/* ---------- 命令解析与执行 ---------- */
+async function runCommand(raw){
+  raw = raw.trim();
+  echo(raw);
+  if (!raw) return;
+  const cmd = raw.split(/\s+/)[0].toLowerCase();
+
+  if (cmd === 'clear'){ out.innerHTML = ''; return; }
+  if (cmd === 'reboot'){ await boot(); return; }
+  if (cmd === 'sudo'){
+    await typeBlock('Permission denied：代码可以 sudo，咖啡不行。');
+    return;
+  }
+  if (cmd === 'date'){
+    await typeBlock('当前系统时间: ' + new Date().toLocaleString('zh-CN', { hour12: false }) + ' · UTC+8');
+    return;
+  }
+  if (cmd === 'exit'){
+    await typeBlock('这个页面没有出口。再待一会儿，咖啡还没凉。');
+    return;
+  }
+  if (ROUTES[cmd]){
+    const sp = PRE_MAP[cmd];
+    await typeBlock(ROUTES[cmd], sp != null ? { cls: 'pre ascii', speed: sp } : { speed: 4 });
+    return;
+  }
+  /* 彩蛋：未知命令 */
+  await typeBlock(cmd + ': command not found，试试 help');
+}
+
+/* 命令队列泵：顺序执行，避免输出互相穿插 */
+async function pump(){
+  if (busy) return;
+  busy = true;
+  while (queue.length){
+    const raw = queue.shift();
+    skipCurrent = false;
+    stateEl.textContent = 'BUSY';
+    await runCommand(raw);
+    if (inputReady) stateEl.textContent = 'READY';
+  }
+  busy = false;
+  if (inputReady) input.focus();
+}
+
+/* ---------- 输入交互：Enter / Tab 补全 / ↑↓ 历史 / Ctrl+L ---------- */
+const hist = [];
+let histIdx = -1, draft = '', tabIdx = 0;
+
+input.addEventListener('keydown', e => {
+  const k = e.key;
+  if (k === 'Tab'){
+    e.preventDefault();
+    const m = AUTO.filter(c => c.startsWith(input.value.trim()));
+    if (!m.length) return;
+    if (m.length === 1){ input.value = m[0] + ' '; tabIdx = 0; }
+    else { input.value = m[tabIdx % m.length]; tabIdx++; }
+  } else if (k === 'ArrowUp'){
+    e.preventDefault();
+    if (!hist.length) return;
+    if (histIdx === -1) draft = input.value;
+    histIdx = histIdx <= 0 ? hist.length - 1 : histIdx - 1;
+    input.value = hist[histIdx];
+  } else if (k === 'ArrowDown'){
+    e.preventDefault();
+    if (histIdx === -1) return;
+    histIdx++;
+    if (histIdx >= hist.length){ histIdx = -1; input.value = draft; }
+    else input.value = hist[histIdx];
+  } else if (k === 'Enter'){
+    submit();
+  } else if (k.toLowerCase() === 'l' && e.ctrlKey){
+    e.preventDefault();
+    out.innerHTML = '';
+  }
+});
+
+function submit(){
+  const raw = input.value;
+  input.value = '';
+  histIdx = -1;
+  tabIdx = 0;
+  if (!inputReady) return;
+  skipCurrent = true;                    /* 回车先快进当前正在打印的内容 */
+  if (raw.trim()) hist.push(raw.trim());
+  queue.push(raw);
+  pump();
+}
+
+/* 点击屏幕：开机/输出中 = 快进；空闲 = 聚焦输入框 */
+screen.addEventListener('pointerdown', e => {
+  if (e.target === input) return;
+  if (!inputReady || busy) skipCurrent = true;
+  if (inputReady && window.getSelection().isCollapsed) input.focus();
+});
+
+/* 开机动画期间的任意按键 = 快进 */
+document.addEventListener('keydown', () => { if (!inputReady) skipCurrent = true; });
+
+/* 功能键点击执行对应命令 */
+document.querySelectorAll('.keys button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!inputReady){ skipCurrent = true; return; }
+    skipCurrent = true;
+    queue.push(btn.dataset.cmd);
+    pump();
+  });
+});
+
+/* 状态栏实时时钟 */
+function tickClock(){
+  clockEl.textContent = new Date().toTimeString().slice(0, 8);
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* 开机！ */
+boot();
+</script>
+</body>
+</html>

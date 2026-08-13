@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="林川（Lin Chuan）——独立开发者 / 胶片摄影师。白天写代码，晚上拍胶片。">
+<meta name="theme-color" content="#05070F">
+<title>林川 LIN CHUAN // 独立开发者 · 胶片摄影师 | SYSTEM v2.6.1</title>
+<!-- 提前挂上 .js 类，避免首屏闪烁（无 JS 时页面仍完整可见） -->
+<script>document.documentElement.className += ' js';</script>
+<style>
+/* ============================================================
+   01 · 变量与基础
+   ============================================================ */
+:root{
+  --bg:#05070F;                  /* 近黑蓝背景 */
+  --cyan:#00F0FF;                /* 霓虹青 */
+  --magenta:#FF2D95;             /* 品红 */
+  --text:#C7D5E8;                /* 正文 */
+  --dim:#5E6E8C;                 /* 弱化数据 */
+  --panel:rgba(9,15,30,.55);     /* 毛玻璃面板底色 */
+  --line:rgba(0,240,255,.16);    /* 半透霓虹边框 */
+  --mono:Consolas,"Cascadia Mono","SF Mono",Menlo,"Courier New",monospace; /* 等宽字体栈 */
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif; /* 无衬线系统字体栈 */
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.7;
+  overflow-x:hidden;
+}
+::selection{background:rgba(255,45,149,.45);color:#fff}
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:rgba(0,240,255,.22);border:2px solid var(--bg);border-radius:6px}
+a{color:var(--cyan);text-decoration:none}
+a:focus-visible{outline:1px dashed var(--cyan);outline-offset:3px}
+
+/* 背景坐标网格（body 伪元素） */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,240,255,.028) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,240,255,.028) 1px,transparent 1px);
+  background-size:44px 44px;
+}
+/* 暗角 */
+.vignette{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 40%,transparent 55%,rgba(0,0,0,.55) 100%);
+}
+/* 细扫描线覆盖层（CRT 质感） */
+.scanlines{
+  position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.5;
+  background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.22) 2px 3px);
+}
+/* 缓慢下移的扫描光带 */
+.scanbar{
+  position:fixed;left:0;right:0;top:-140px;height:140px;z-index:61;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(0,240,255,.05) 55%,transparent);
+  animation:scanmove 9s linear infinite;
+}
+@keyframes scanmove{to{transform:translateY(calc(100vh + 280px))}}
+
+/* 四角定位角框 */
+.corner{
+  position:fixed;width:24px;height:24px;z-index:70;pointer-events:none;
+  border:2px solid var(--cyan);opacity:.85;
+  filter:drop-shadow(0 0 5px rgba(0,240,255,.6));
+}
+.corner.tl{top:10px;left:10px;border-right:0;border-bottom:0}
+.corner.tr{top:10px;right:10px;border-left:0;border-bottom:0}
+.corner.bl{bottom:10px;left:10px;border-right:0;border-top:0}
+.corner.br{bottom:10px;right:10px;border-left:0;border-top:0}
+
+/* ============================================================
+   02 · 顶部状态栏
+   ============================================================ */
+.statusbar{
+  position:fixed;top:0;left:0;right:0;height:38px;z-index:80;
+  display:flex;align-items:center;gap:18px;
+  padding:0 46px; /* 给左右角框让位 */
+  font-family:var(--mono);font-size:12px;letter-spacing:1px;
+  color:var(--dim);
+  background:rgba(5,7,15,.72);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.sb-left{display:flex;align-items:center;gap:9px;color:var(--cyan);
+  text-shadow:0 0 8px rgba(0,240,255,.6)}
+.sb-center{margin:0 auto;text-align:center}
+.sb-right{display:flex;gap:12px}
+.sb-dim{color:var(--dim)}
+.sb-sep{color:var(--magenta)}
+/* 霓虹状态灯 */
+.led{display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 8px var(--cyan),0 0 16px rgba(0,240,255,.4);
+  animation:ledpulse 2.4s ease-in-out infinite}
+.led.magenta{background:var(--magenta);box-shadow:0 0 8px var(--magenta),0 0 16px rgba(255,45,149,.4)}
+@keyframes ledpulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ============================================================
+   03 · 主体 HUD 布局（左：操作员台 · 右：模块区）
+   ============================================================ */
+.hud{
+  position:relative;z-index:1;
+  max-width:1240px;margin:0 auto;
+  padding:58px 28px 30px;
+  display:grid;grid-template-columns:340px minmax(0,1fr);gap:22px;
+}
+/* 毛玻璃面板通用样式：半透边框 + 内发光 + 多层投影 */
+.panel{
+  position:relative;
+  background:linear-gradient(160deg,rgba(14,22,44,.6),rgba(6,9,18,.5));
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:
+    0 14px 40px rgba(0,0,0,.5),
+    inset 0 0 26px rgba(0,240,255,.045),
+    inset 0 1px 0 rgba(0,240,255,.08);
+}
+/* 面板标题栏（窗口风格） */
+.panel-head{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:11px;letter-spacing:1.5px;color:var(--dim);
+}
+.dots{display:flex;gap:5px}
+.dots i{width:7px;height:7px;border-radius:50%;display:block}
+.dots .d1{background:var(--cyan);box-shadow:0 0 6px rgba(0,240,255,.8)}
+.dots .d2{background:var(--magenta);box-shadow:0 0 6px rgba(255,45,149,.8)}
+.dots .d3{background:#3A465E}
+.p-title{color:var(--cyan);text-shadow:0 0 8px rgba(0,240,255,.45)}
+.p-sig{margin-left:auto}
+
+/* ============================================================
+   04 · 操作员档案（左列）：标题 / 肖像 / 履历 / 技能
+   ============================================================ */
+.masthead{padding:8px 4px 26px;position:relative}
+.masthead::before{
+  content:"";position:absolute;top:0;left:0;width:44px;height:2px;
+  background:var(--cyan);box-shadow:0 0 10px var(--cyan),0 0 22px rgba(0,240,255,.5);
+}
+.mast-label{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--dim);margin-bottom:12px}
+/* 大标题：多层 text-shadow 发光 + 周期闪烁 */
+.glitch{
+  position:relative;
+  font-size:clamp(3rem,5.5vw,4.4rem);
+  font-weight:700;line-height:1.05;letter-spacing:6px;
+  color:#EAF6FF;
+  text-shadow:
+    0 0 12px rgba(0,240,255,.75),
+    0 0 34px rgba(0,240,255,.4),
+    0 0 70px rgba(255,45,149,.25);
+  animation:titleflicker 7s linear infinite;
+}
+/* 故障层：两份 data-text 副本，clip-path 抖动 + RGB 分离 */
+.glitch::before,.glitch::after{
+  content:attr(data-text);
+  position:absolute;left:0;top:0;width:100%;
+  pointer-events:none;
+}
+.glitch::before{color:var(--magenta);z-index:-1;animation:glitchA 3.4s steps(1) infinite}
+.glitch::after{color:var(--cyan);z-index:-2;animation:glitchB 2.9s steps(1) infinite}
+@keyframes glitchA{
+  0%,88%{transform:translate(-2px,1px);clip-path:inset(0 0 0 0);opacity:.55}
+  89%{transform:translate(-6px,-3px);clip-path:inset(12% 0 58% 0);opacity:1}
+  91%{transform:translate(5px,2px);clip-path:inset(58% 0 12% 0);opacity:1}
+  93%{transform:translate(-4px,1px);clip-path:inset(30% 0 32% 0);opacity:1}
+  95%,100%{transform:translate(-2px,1px);clip-path:inset(0 0 0 0);opacity:.55}
+}
+@keyframes glitchB{
+  0%,86%{transform:translate(2px,-1px);clip-path:inset(0 0 0 0);opacity:.5}
+  87%{transform:translate(6px,2px);clip-path:inset(45% 0 20% 0);opacity:1}
+  90%{transform:translate(-5px,-2px);clip-path:inset(8% 0 70% 0);opacity:1}
+  92%{transform:translate(3px,1px);clip-path:inset(60% 0 8% 0);opacity:1}
+  94%,100%{transform:translate(2px,-1px);clip-path:inset(0 0 0 0);opacity:.5}
+}
+@keyframes titleflicker{
+  0%,91.9%,94%,100%{opacity:1}
+  92%{opacity:.6}93%{opacity:1}96%{opacity:.85}97%{opacity:1}
+}
+.mast-en{margin-top:10px;font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--dim);line-height:1.9}
+.mast-en b{color:var(--cyan);font-weight:400}
+.mast-tag{margin-top:12px;font-size:15px;color:var(--cyan);text-shadow:0 0 10px rgba(0,240,255,.5)}
+.blink{color:var(--magenta);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* 档案面板 */
+.profile{padding:16px 16px 10px}
+/* 线稿肖像：内联 SVG + 六边形框 + 扫描光 */
+.avatar{
+  position:relative;width:112px;height:124px;margin:0 auto 16px;
+  overflow:hidden;border-radius:8px;border:1px solid var(--line);
+  background:rgba(0,240,255,.03);
+  box-shadow:inset 0 0 18px rgba(0,240,255,.06);
+}
+.avatar::after{
+  content:"";position:absolute;left:0;right:0;top:-30%;height:30%;
+  background:linear-gradient(180deg,transparent,rgba(0,240,255,.18),transparent);
+  animation:avscan 3.2s ease-in-out infinite;
+}
+@keyframes avscan{0%{top:-30%}55%,100%{top:130%}}
+.kv{list-style:none;font-size:13px}
+.kv li{
+  display:flex;justify-content:space-between;gap:10px;
+  padding:6px 0;border-bottom:1px dashed rgba(0,240,255,.09);
+}
+.kv li span{color:var(--dim);font-family:var(--mono);font-size:11px;letter-spacing:1px}
+.kv li b{font-weight:600;text-align:right}
+.kv .ok{color:var(--cyan);display:flex;align-items:center;gap:6px;
+  text-shadow:0 0 8px rgba(0,240,255,.4)}
+.bio{margin-top:14px;font-size:13.5px;opacity:.94}
+.bio em{color:var(--magenta);font-style:normal;text-shadow:0 0 8px rgba(255,45,149,.4)}
+/* 兴趣标签 */
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.tags span{
+  font-family:var(--mono);font-size:11px;padding:3px 10px;letter-spacing:1px;
+  border:1px solid rgba(0,240,255,.3);border-radius:999px;color:var(--cyan);
+  background:rgba(0,240,255,.05);
+  box-shadow:inset 0 0 10px rgba(0,240,255,.06);
+}
+.tags span:nth-child(even){
+  border-color:rgba(255,45,149,.35);color:var(--magenta);
+  background:rgba(255,45,149,.05);box-shadow:inset 0 0 10px rgba(255,45,149,.06);
+}
+/* 遥测数据行 */
+.telemetry{
+  padding:12px 16px 14px;border-top:1px dashed rgba(0,240,255,.1);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:1px;color:var(--dim);
+}
+.telemetry span{color:var(--cyan);text-shadow:0 0 6px rgba(0,240,255,.4)}
+
+/* 技能面板：霓虹渐变进度条，进入视口后由 IntersectionObserver 触发充能 */
+.skills{list-style:none;padding:16px 16px 4px}
+.skills li{padding:9px 0}
+.sk-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.sk-label .sk-num{font-family:var(--mono);font-size:11px;color:var(--cyan);
+  text-shadow:0 0 8px rgba(0,240,255,.5)}
+.sk-bar{
+  height:8px;border-radius:4px;overflow:hidden;
+  background:rgba(255,255,255,.05);border:1px solid rgba(0,240,255,.16);
+}
+.sk-bar i{
+  display:block;height:100%;width:0;
+  background:linear-gradient(90deg,var(--cyan),#7A5CFF 55%,var(--magenta));
+  box-shadow:0 0 12px rgba(0,240,255,.65),0 0 22px rgba(255,45,149,.4);
+  transition:width 1.3s cubic-bezier(.22,.8,.25,1);
+}
+.panel.on .sk-bar i{width:var(--w)} /* --w 由内联样式给出 */
+.panel-note{padding:4px 16px 14px;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.5px;color:var(--dim)}
+
+/* ============================================================
+   05 · 系统模块（项目卡片）
+   ============================================================ */
+.sec-head{display:flex;align-items:center;gap:12px;margin:0 2px 14px}
+.sec-head h2{font-size:20px;letter-spacing:2px;font-weight:700;color:#EAF6FF;
+  text-shadow:0 0 12px rgba(0,240,255,.4)}
+.sec-bracket{color:var(--magenta);text-shadow:0 0 10px rgba(255,45,149,.6)}
+.sec-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(0,240,255,.4),transparent)}
+.sec-meta{font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--dim)}
+
+.modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.module{
+  --accent:var(--cyan);
+  --acc-glow:rgba(0,240,255,.32);
+  --acc-soft:rgba(0,240,255,.06);
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(14,22,44,.6),rgba(6,9,18,.5));
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:10px;
+  padding:16px 18px 14px;
+  transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease;
+}
+.module:nth-child(even){--accent:var(--magenta);--acc-glow:rgba(255,45,149,.32);--acc-soft:rgba(255,45,149,.06)}
+/* hover：霓虹点亮边框 + 多层发光 + 轻微放大 */
+.module:hover{
+  transform:translateY(-4px) scale(1.015);
+  border-color:var(--accent);
+  box-shadow:
+    0 0 26px var(--acc-glow),
+    0 0 60px var(--acc-glow),
+    inset 0 0 30px var(--acc-soft);
+}
+/* hover：一道扫描光扫过（伪元素动画） */
+.module::after{
+  content:"";position:absolute;left:-20%;right:-20%;top:-40%;height:40%;
+  background:linear-gradient(180deg,transparent,rgba(0,240,255,.14),transparent);
+  pointer-events:none;opacity:0;
+}
+.module:nth-child(even)::after{
+  background:linear-gradient(180deg,transparent,rgba(255,45,149,.14),transparent);
+}
+.module:hover::after{opacity:1;animation:sweep .9s linear}
+@keyframes sweep{from{transform:translateY(0)}to{transform:translateY(520%)}}
+
+.m-head{display:flex;align-items:center;gap:8px;font-family:var(--mono);
+  font-size:10.5px;letter-spacing:1px}
+.m-id{color:var(--accent);text-shadow:0 0 8px var(--acc-glow)}
+.m-status{margin-left:auto;display:flex;align-items:center;gap:5px;color:var(--dim)}
+.m-status .led{width:6px;height:6px}
+.m-ver{color:var(--dim)}
+.m-title{margin-top:10px;font-size:19px;letter-spacing:1px;color:#EAF6FF;
+  text-shadow:0 0 10px rgba(0,240,255,.25)}
+.m-title .m-en{margin-left:8px;font-family:var(--mono);font-size:11px;
+  letter-spacing:2px;color:var(--dim)}
+.m-desc{margin-top:8px;font-size:13px;opacity:.9;min-height:66px}
+.m-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.m-tags span{font-family:var(--mono);font-size:10.5px;padding:2px 8px;
+  border:1px solid rgba(0,240,255,.28);border-radius:3px;color:var(--cyan)}
+.module:nth-child(even) .m-tags span{border-color:rgba(255,45,149,.32);color:var(--magenta)}
+.m-data{margin-top:12px;padding-top:10px;border-top:1px dashed rgba(0,240,255,.12);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.5px;color:var(--dim)}
+
+/* ============================================================
+   06 · 系统日志（经历时间线）
+   ============================================================ */
+.log{
+  list-style:none;padding:14px 16px 14px 18px;
+  position:relative;border-left:1px solid rgba(0,240,255,.14);margin-left:16px;
+}
+.log li{
+  position:relative;display:flex;gap:12px;
+  padding:9px 0;font-size:13px;opacity:.7;
+  transition:opacity .6s;
+}
+/* 时间线节点 */
+.log li::before{
+  content:"";position:absolute;left:-4.5px;top:17px;width:8px;height:8px;
+  border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);
+}
+.log li:nth-child(4n)::before{background:var(--magenta);box-shadow:0 0 8px var(--magenta)}
+.log li.live{opacity:1;animation:login .5s ease}
+.log time{flex:0 0 62px;font-family:var(--mono);font-size:11px;color:var(--cyan);
+  text-shadow:0 0 6px rgba(0,240,255,.45);padding-top:2px}
+.log .log-body b{color:var(--magenta);font-weight:600}
+@keyframes login{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+
+/* ============================================================
+   07 · 通讯频道（联系方式）
+   ============================================================ */
+.comm-wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;
+  padding:0 28px 62px}
+.comm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.channel{
+  display:block;padding:16px 18px;
+  border-right:1px solid var(--line);
+  transition:background .3s,transform .3s;
+}
+.channel:last-child{border-right:0}
+.channel:hover{background:rgba(0,240,255,.04);transform:translateY(-2px)}
+.ch-label{display:block;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:2px;color:var(--dim)}
+.ch-value{display:block;margin-top:6px;font-family:var(--mono);font-size:15px;
+  color:var(--cyan);text-shadow:0 0 10px rgba(0,240,255,.45);word-break:break-all}
+.channel:nth-child(2) .ch-value{color:var(--magenta);
+  text-shadow:0 0 10px rgba(255,45,149,.45)}
+.ch-meta{display:block;margin-top:5px;font-size:11px;color:var(--dim)}
+.channel:hover .ch-value{text-shadow:0 0 14px rgba(0,240,255,.9)}
+.comm-copy{text-align:center;padding:20px 0 0;font-family:var(--mono);
+  font-size:10.5px;letter-spacing:2px;color:var(--dim)}
+
+/* ============================================================
+   08 · 滚动浮现（.js 环境生效；技能条依赖同名的 .on 类）
+   ============================================================ */
+.js .reveal{opacity:0;transform:translateY(16px);
+  transition:opacity .7s ease,transform .7s ease}
+.js .reveal.on{opacity:1;transform:none}
+/* 模块卡片逐个浮现 */
+.js .modules .reveal:nth-child(2){transition-delay:.08s}
+.js .modules .reveal:nth-child(3){transition-delay:.16s}
+.js .modules .reveal:nth-child(4){transition-delay:.24s}
+
+/* ============================================================
+   09 · 开机自检覆盖层
+   ============================================================ */
+#boot{display:none}
+.js #boot{
+  position:fixed;inset:0;z-index:100;display:flex;
+  align-items:center;justify-content:center;cursor:pointer;
+  background:var(--bg);
+  transition:opacity .6s ease;
+}
+#boot.boot-done{opacity:0;pointer-events:none}
+.boot-frame{
+  width:min(560px,88vw);
+  border:1px solid rgba(0,240,255,.25);
+  border-radius:6px;padding:22px 26px;
+  font-family:var(--mono);font-size:13px;color:var(--cyan);
+  background:rgba(0,240,255,.02);
+  box-shadow:0 0 40px rgba(0,240,255,.12),inset 0 0 30px rgba(0,240,255,.05);
+}
+.boot-line{min-height:22px;text-shadow:0 0 8px rgba(0,240,255,.4)}
+.boot-line:last-child::after{content:"▌";color:var(--magenta);animation:blink 1s steps(1) infinite}
+.boot-online{margin-top:12px;font-size:17px;letter-spacing:4px;color:var(--magenta);
+  text-shadow:0 0 14px rgba(255,45,149,.8),0 0 30px rgba(255,45,149,.5);
+  animation:ledpulse 1.2s ease-in-out infinite}
+.boot-hint{margin-top:16px;font-size:10.5px;letter-spacing:2px;color:var(--dim)}
+
+/* ============================================================
+   10 · 响应式（移动端不崩）与减少动态
+   ============================================================ */
+@media (max-width:980px){
+  .hud{grid-template-columns:minmax(0,1fr)}
+  .statusbar{padding:0 40px}
+}
+@media (max-width:720px){
+  .sb-center{display:none}
+  .modules{grid-template-columns:minmax(0,1fr)}
+  .comm-grid{grid-template-columns:minmax(0,1fr)}
+  .channel{border-right:0;border-bottom:1px solid var(--line)}
+  .channel:last-child{border-bottom:0}
+  .hud{padding:52px 14px 24px;gap:16px}
+  .comm-wrap{padding:0 14px 56px}
+  .statusbar{font-size:11px;gap:10px;padding:0 36px}
+}
+@media (max-width:420px){
+  .sb-right #cursor{display:none}
+  .m-desc{min-height:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .scanbar,.glitch::before,.glitch::after,.led,.blink,.avatar::after,
+  .boot-online,.boot-line:last-child::after{animation:none!important}
+  .glitch{animation:none}
+  .js .reveal{transition:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 背景层 ============ -->
+<canvas id="net" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+<div class="scanbar" aria-hidden="true"></div>
+<!-- 四角定位角框 -->
+<div class="corner tl" aria-hidden="true"></div>
+<div class="corner tr" aria-hidden="true"></div>
+<div class="corner bl" aria-hidden="true"></div>
+<div class="corner br" aria-hidden="true"></div>
+
+<!-- ============ 顶部状态栏 ============ -->
+<header class="statusbar">
+  <div class="sb-left"><span class="led"></span>SYSTEM ONLINE<span class="sb-sep">/</span>v2.6.1</div>
+  <div class="sb-center">30.25°N 120.16°E <span class="sb-dim">杭州</span></div>
+  <div class="sb-right"><span id="clock">--:--:--</span><span class="sb-sep">·</span><span id="cursor">X:--- Y:---</span></div>
+</header>
+
+<!-- ============ 开机自检（点击跳过） ============ -->
+<div id="boot" aria-hidden="true">
+  <div class="boot-frame">
+    <div id="bootLog"></div>
+    <div class="boot-hint">点击任意处跳过 // CLICK TO SKIP</div>
+  </div>
+</div>
+
+<main class="hud">
+
+  <!-- ============ 左列 · 操作员台 ============ -->
+  <aside class="col-left">
+
+    <!-- 大标题（故障效果） -->
+    <div class="masthead reveal">
+      <p class="mast-label">OPERATOR // 操作员档案</p>
+      <h1 class="glitch" data-text="林川">林川</h1>
+      <p class="mast-en"><b>LIN CHUAN</b> // INDEPENDENT DEVELOPER · FILM PHOTOGRAPHER</p>
+      <p class="mast-tag">白天写代码，晚上拍胶片<span class="blink">▌</span></p>
+    </div>
+
+    <!-- 档案面板 -->
+    <section class="panel reveal">
+      <div class="panel-head">
+        <span class="dots"><i class="d1"></i><i class="d2"></i><i class="d3"></i></span>
+        <span class="p-title">PROFILE</span> // 档案
+        <span class="p-sig">SIG: 98%</span>
+      </div>
+      <div class="profile">
+        <!-- 内联 SVG 线稿肖像 -->
+        <div class="avatar">
+          <svg viewBox="0 0 112 124" width="112" height="124" role="img" aria-label="林川的线稿肖像">
+            <defs>
+              <linearGradient id="hexGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#00F0FF"/>
+                <stop offset="1" stop-color="#FF2D95"/>
+              </linearGradient>
+            </defs>
+            <!-- 六边形外框 -->
+            <polygon points="56,6 104,34 104,90 56,118 8,90 8,34" fill="none" stroke="url(#hexGrad)" stroke-width="1.5"/>
+            <!-- 头部与眼睛 -->
+            <circle cx="56" cy="50" r="15" fill="none" stroke="#00F0FF" stroke-width="1.5"/>
+            <path d="M49 49 q2 3 0 5" fill="none" stroke="#00F0FF" stroke-width="1.2"/>
+            <path d="M63 49 q-2 3 0 5" fill="none" stroke="#00F0FF" stroke-width="1.2"/>
+            <!-- 肩部与相机挂带 -->
+            <path d="M34 104 C34 84 46 76 56 76 C66 76 78 84 78 104" fill="none" stroke="#00F0FF" stroke-width="1.5"/>
+            <path d="M44 64 C48 76 64 76 68 64" fill="none" stroke="#FF2D95" stroke-width="1" stroke-dasharray="3 2"/>
+            <!-- 底部编号 -->
+            <text x="56" y="103" text-anchor="middle" font-family="Consolas,monospace" font-size="7" fill="#5E6E8C" letter-spacing="2">LC-01</text>
+            <rect x="22" y="108" width="68" height="1.5" fill="rgba(0,240,255,.5)"/>
+          </svg>
+        </div>
+        <!-- 键值数据 -->
+        <ul class="kv">
+          <li><span>ID</span><b>LC-2023-IND</b></li>
+          <li><span>坐标</span><b>杭州 HANGZHOU</b></li>
+          <li><span>身份</span><b>独立开发者 / 胶片摄影师</b></li>
+          <li><span>装备</span><b>Leica M6 · Rolleiflex 3.5F</b></li>
+          <li><span>状态</span><b class="ok"><i class="led"></i>ACTIVE — 开发「岛读」中</b></li>
+        </ul>
+        <!-- 简介 -->
+        <p class="bio">曾在互联网大厂做前端工程师，2023 年辞职成为独立开发者。相信小而美的产品：<em>做给自己用的工具，写给人看的故事。</em></p>
+        <!-- 兴趣标签 -->
+        <div class="tags">
+          <span>胶片摄影</span><span>徒步</span><span>煮咖啡</span><span>收集旧地图</span>
+        </div>
+      </div>
+      <p class="telemetry">UPTIME <span id="uptime">00:00:00</span> · MEM <span>42%</span> · CPU <span>11%</span> · COFFEE <span>HOT</span></p>
+    </section>
+
+    <!-- 技能面板 -->
+    <section class="panel reveal">
+      <div class="panel-head">
+        <span class="dots"><i class="d1"></i><i class="d2"></i><i class="d3"></i></span>
+        <span class="p-title">CAPABILITIES</span> // 技能
+        <span class="p-sig">CALIBRATED 2026.08</span>
+      </div>
+      <ul class="skills">
+        <li>
+          <div class="sk-label"><span>TypeScript</span><span class="sk-num">92%</span></div>
+          <div class="sk-bar"><i style="--w:92%"></i></div>
+        </li>
+        <li>
+          <div class="sk-label"><span>React</span><span class="sk-num">88%</span></div>
+          <div class="sk-bar"><i style="--w:88%"></i></div>
+        </li>
+        <li>
+          <div class="sk-label"><span>SwiftUI</span><span class="sk-num">82%</span></div>
+          <div class="sk-bar"><i style="--w:82%"></i></div>
+        </li>
+        <li>
+          <div class="sk-label"><span>摄影</span><span class="sk-num">90%</span></div>
+          <div class="sk-bar"><i style="--w:90%"></i></div>
+        </li>
+        <li>
+          <div class="sk-label"><span>写作</span><span class="sk-num">76%</span></div>
+          <div class="sk-bar"><i style="--w:76%"></i></div>
+        </li>
+      </ul>
+      <p class="panel-note">// 数据来源：自评。摄影按快门数计，不设上限。</p>
+    </section>
+
+  </aside>
+
+  <!-- ============ 右列 · 系统模块与日志 ============ -->
+  <section class="col-main">
+
+    <header class="sec-head reveal">
+      <h2><span class="sec-bracket">[</span>MODULES<span class="sec-bracket">]</span> 系统模块</h2>
+      <span class="sec-line"></span>
+      <span class="sec-meta">REGISTERED: 04 · ACTIVE: 03 · BETA: 01</span>
+    </header>
+
+    <div class="modules">
+      <!-- MOD-01 拾光 -->
+      <article class="module reveal">
+        <div class="m-head">
+          <span class="m-id">MOD-01</span>
+          <span class="m-status"><i class="led"></i>ONLINE</span>
+          <span class="m-ver">v2.4</span>
+        </div>
+        <h3 class="m-title">拾光<span class="m-en">SHIGUANG</span></h3>
+        <p class="m-desc">模拟 12 种经典胶卷色彩的胶片相机 App：柯达金、富士 Velvia、伊尔福 HP5……按下快门即显影，成片自带颗粒与漏光。</p>
+        <div class="m-tags"><span>SwiftUI</span><span>Core Image</span><span>12 FILM STOCKS</span></div>
+        <div class="m-data">EMULSIONS: 12 · ISO: 100–3200 · 暗房模式: ON</div>
+      </article>
+
+      <!-- MOD-02 码字 -->
+      <article class="module reveal">
+        <div class="m-head">
+          <span class="m-id">MOD-02</span>
+          <span class="m-status"><i class="led"></i>ONLINE</span>
+          <span class="m-ver">v1.8</span>
+        </div>
+        <h3 class="m-title">码字<span class="m-en">MAZI</span></h3>
+        <p class="m-desc">本地优先的 Markdown 写作工具。文字只存在你自己的硬盘上，无账号、无云端、无打扰——写给人看的故事。</p>
+        <div class="m-tags"><span>TypeScript</span><span>React</span><span>Tauri</span></div>
+        <div class="m-data">存储: LOCAL FIRST · 格式: MARKDOWN · 云端: 拒绝</div>
+      </article>
+
+      <!-- MOD-03 岛读 -->
+      <article class="module reveal">
+        <div class="m-head">
+          <span class="m-id">MOD-03</span>
+          <span class="m-status"><i class="led magenta"></i>BETA</span>
+          <span class="m-ver">v0.9</span>
+        </div>
+        <h3 class="m-title">岛读<span class="m-en">DAODU</span></h3>
+        <p class="m-desc">给纸质书做读书笔记的 App：扫描摘录、手写批注、按书归档。纸页之间，是一座座可以回访的岛。</p>
+        <div class="m-tags"><span>SwiftUI</span><span>Vision</span><span>PencilKit</span></div>
+        <div class="m-data">扫描: OCR · 手写: PENCILKIT · 状态: TESTFLIGHT 内测</div>
+      </article>
+
+      <!-- MOD-04 午后电台 -->
+      <article class="module reveal">
+        <div class="m-head">
+          <span class="m-id">MOD-04</span>
+          <span class="m-status"><i class="led"></i>ONLINE</span>
+          <span class="m-ver">v1.2</span>
+        </div>
+        <h3 class="m-title">午后电台<span class="m-en">AFTERNOON RADIO</span></h3>
+        <p class="m-desc">收集城市声音的网站：西湖边的蝉鸣、运河的汽笛、雨天的公交站。每个声音都标记了录制坐标与时间。</p>
+        <div class="m-tags"><span>React</span><span>Web Audio</span><span>地理标记</span></div>
+        <div class="m-data">声音样本: 1,024 · 时长: 全天候 · 城市: 杭州</div>
+      </article>
+    </div>
+
+    <header class="sec-head reveal" style="margin-top:28px">
+      <h2><span class="sec-bracket">[</span>SYS.LOG<span class="sec-bracket">]</span> 系统日志</h2>
+      <span class="sec-line"></span>
+      <span class="sec-meta">BUFFER: 128KB · LIVE</span>
+    </header>
+
+    <!-- 经历时间线 -->
+    <section class="panel reveal">
+      <div class="panel-head">
+        <span class="dots"><i class="d1"></i><i class="d2"></i><i class="d3"></i></span>
+        <span class="p-title">LOG VIEWER</span> // 经历日志
+        <span class="p-sig">TAIL -F /dev/life</span>
+      </div>
+      <ul class="log" id="logList">
+        <li><time>2018.07</time><div class="log-body"><b>[接入]</b> 入职某互联网公司，前端工程师——负责主站架构升级与性能优化。</div></li>
+        <li><time>2021.03</time><div class="log-body"><b>[晋升]</b> 高级前端工程师，主导公司设计系统与组件库建设。</div></li>
+        <li><time>2023.04</time><div class="log-body"><b>[决策]</b> 辞职，成为独立开发者。ID 变更为 LC-2023-IND。</div></li>
+        <li><time>2023.09</time><div class="log-body"><b>[上线]</b>「拾光」v1.0 发布，入选 App Store 本周编辑推荐。</div></li>
+        <li><time>2024.06</time><div class="log-body"><b>[上线]</b>「码字」v1.0——本地优先的 Markdown 写作工具。</div></li>
+        <li><time>2024.11</time><div class="log-body"><b>[上线]</b>「午后电台」开播：开始收集杭州的城市声音。</div></li>
+        <li><time>2025.08</time><div class="log-body"><b>[内测]</b>「岛读」进入 TestFlight，纸质书笔记 App。</div></li>
+      </ul>
+    </section>
+
+  </section>
+</main>
+
+<!-- ============ 通讯频道（联系方式） ============ -->
+<footer class="comm-wrap reveal">
+  <section class="panel">
+    <div class="panel-head">
+      <span class="dots"><i class="d1"></i><i class="d2"></i><i class="d3"></i></span>
+      <span class="p-title">COMM CHANNELS</span> // 通讯频道
+      <span class="p-sig">UPLINK: 34ms · OPEN</span>
+    </div>
+    <div class="comm-grid">
+      <a class="channel" href="mailto:linchuan@example.com">
+        <span class="ch-label">EMAIL / 电子邮件</span>
+        <span class="ch-value">linchuan@example.com</span>
+        <span class="ch-meta">加密：推荐 PGP 0x7C1A</span>
+      </a>
+      <a class="channel" href="https://github.com/linchuan-dev" target="_blank" rel="noopener">
+        <span class="ch-label">GITHUB / 代码仓库</span>
+        <span class="ch-value">github.com/linchuan-dev</span>
+        <span class="ch-meta">REPOS: 12 · 最近提交: 今天凌晨 1:47</span>
+      </a>
+      <div class="channel">
+        <span class="ch-label">FREQ / 频段</span>
+        <span class="ch-value">CH-08 · 30.25°N 120.16°E</span>
+        <span class="ch-meta">杭州 · 午后 14:00 开播</span>
+      </div>
+    </div>
+  </section>
+  <p class="comm-copy">© 2026 LIN CHUAN · BUILT WITH TYPESCRIPT &amp; COFFEE · 白天写代码，晚上拍胶片</p>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------- 1 · 开机自检：逐字打印启动日志，点击跳过 ---------- */
+  (function boot(){
+    var box = document.getElementById('boot');
+    var log = document.getElementById('bootLog');
+    if (!box) return;
+    // 同一会话内只播放一次
+    if (sessionStorage.getItem('lc_booted')) { box.remove(); return; }
+    var LINES = [
+      'LINCHUAN OS v2.6.1 — 启动自检中',
+      '> 初始化渲染管线 ................ OK',
+      '> 加载模块: 拾光 / 码字 / 岛读 / 午后电台 ................ OK',
+      '> 建立上行链路 [杭州 · 30.25°N 120.16°E] ................ OK',
+      '> 操作员认证: LIN CHUAN ................ OK',
+      '> 检查库存: 胶卷 ×12 · 咖啡豆 42%'
+    ];
+    var li = 0, ci = 0, cur = null, done = false;
+    function finish(){
+      if (done) return;
+      done = true;
+      box.classList.add('boot-done');
+      try { sessionStorage.setItem('lc_booted', '1'); } catch(e){}
+      setTimeout(function(){ box.remove(); }, 700);
+    }
+    function tick(){
+      if (done) return;
+      if (!cur) {
+        if (li >= LINES.length) {
+          var el = document.createElement('div');
+          el.className = 'boot-online';
+          el.textContent = 'SYSTEM ONLINE';
+          log.appendChild(el);
+          setTimeout(finish, 900);
+          return;
+        }
+        cur = document.createElement('div');
+        cur.className = 'boot-line';
+        log.appendChild(cur);
+        ci = 0;
+      }
+      var line = LINES[li];
+      if (ci < line.length) { cur.textContent = line.slice(0, ++ci); setTimeout(tick, 11); }
+      else { li++; cur = null; setTimeout(tick, 150); }
+    }
+    box.addEventListener('click', finish, { once: true });
+    tick();
+  })();
+
+  /* ---------- 2 · Canvas 粒子网络背景：点 + 连线，随鼠标扰动 ---------- */
+  (function net(){
+    var cv = document.getElementById('net');
+    if (!cv || !cv.getContext) return;
+    var ctx = cv.getContext('2d');
+    var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var W = 0, H = 0, DPR = 1, ps = [], raf = 0;
+    var mouse = { x: -9999, y: -9999 };
+    var LINK = 130;   // 粒子连线距离阈值
+    var MR = 150;     // 鼠标影响半径
+    // 按屏幕面积控制粒子数：桌面最多 110，触屏设备减半，保证性能
+    function make(){
+      var coarse = window.matchMedia('(pointer: coarse)').matches;
+      var n = coarse ? Math.min(45, Math.round(W * H / 26000))
+                     : Math.min(110, Math.round(W * H / 16000));
+      ps = [];
+      for (var i = 0; i < n; i++) {
+        ps.push({
+          x: Math.random() * W, y: Math.random() * H,
+          vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4,
+          r: Math.random() * 1.4 + .6
+        });
+      }
+    }
+    function size(){
+      DPR = Math.min(window.devicePixelRatio || 1, 2); // 限制 DPR 节省像素
+      W = window.innerWidth; H = window.innerHeight;
+      cv.width = W * DPR; cv.height = H * DPR;
+      cv.style.width = W + 'px'; cv.style.height = H + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      make();
+    }
+    function draw(){
+      ctx.clearRect(0, 0, W, H);
+      ctx.lineWidth = 1;
+      for (var i = 0; i < ps.length; i++) {
+        for (var j = i + 1; j < ps.length; j++) {
+          var a = ps[i], b = ps[j];
+          var dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy;
+          if (d2 < LINK * LINK) {
+            ctx.strokeStyle = 'rgba(0,240,255,' + ((1 - Math.sqrt(d2) / LINK) * .45) + ')';
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          }
+        }
+        // 与鼠标的品红连线（随距离渐隐）
+        var mx = ps[i].x - mouse.x, my = ps[i].y - mouse.y, md2 = mx * mx + my * my;
+        if (md2 < MR * MR) {
+          ctx.strokeStyle = 'rgba(255,45,149,' + ((1 - Math.sqrt(md2) / MR) * .65) + ')';
+          ctx.beginPath(); ctx.moveTo(mouse.x, mouse.y); ctx.lineTo(ps[i].x, ps[i].y); ctx.stroke();
+        }
+      }
+      ctx.shadowColor = 'rgba(0,240,255,.9)'; ctx.shadowBlur = 6;
+      ctx.fillStyle = 'rgba(0,240,255,.85)';
+      for (var k = 0; k < ps.length; k++) {
+        var p = ps[k];
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+    function step(){
+      for (var i = 0; i < ps.length; i++) {
+        var p = ps[i];
+        // 鼠标扰动：影响半径内的粒子被推开并加速
+        var dx = p.x - mouse.x, dy = p.y - mouse.y, d2 = dx * dx + dy * dy;
+        if (d2 < MR * MR) {
+          var d = Math.sqrt(d2) || 1, f = (MR - d) / MR;
+          p.vx += (dx / d) * f * .22;
+          p.vy += (dy / d) * f * .22;
+        }
+        p.vx *= .965; p.vy *= .965;          // 阻尼
+        var sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (sp > 1.3) { p.vx *= 1.3 / sp; p.vy *= 1.3 / sp; } // 限速
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;  // 边界回弹
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        p.x = Math.max(0, Math.min(W, p.x));
+        p.y = Math.max(0, Math.min(H, p.y));
+      }
+      draw();
+      raf = requestAnimationFrame(step);
+    }
+    size();
+    if (REDUCED) { draw(); }                 // 减少动态偏好：只画一帧
+    else { raf = requestAnimationFrame(step); }
+    window.addEventListener('pointermove', function(e){
+      mouse.x = e.clientX; mouse.y = e.clientY;
+    }, { passive: true });
+    window.addEventListener('pointerleave', function(){
+      mouse.x = -9999; mouse.y = -9999;
+    });
+    var rt;
+    window.addEventListener('resize', function(){
+      clearTimeout(rt); rt = setTimeout(size, 200); // 防抖
+    });
+    document.addEventListener('visibilitychange', function(){
+      if (REDUCED) return;
+      if (document.hidden) cancelAnimationFrame(raf);   // 后台暂停
+      else raf = requestAnimationFrame(step);
+    });
+  })();
+
+  /* ---------- 3 · 状态栏时钟 / 光标坐标 / 运行时长 ---------- */
+  var clockEl = document.getElementById('clock');
+  var curEl = document.getElementById('cursor');
+  var upEl = document.getElementById('uptime');
+  var t0 = Date.now();
+  function pad(n){ return String(n).padStart(2, '0'); }
+  function fmtUp(){
+    var s = Math.floor((Date.now() - t0) / 1000);
+    return 'UPTIME ' + pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60);
+  }
+  setInterval(function(){
+    var d = new Date();
+    if (clockEl) clockEl.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    if (upEl) upEl.textContent = fmtUp();
+  }, 1000);
+  window.addEventListener('pointermove', function(e){
+    if (curEl) curEl.textContent = 'X:' + Math.round(e.clientX) + ' Y:' + Math.round(e.clientY);
+  }, { passive: true });
+
+  /* ---------- 4 · 进入视口：面板浮现 + 技能条宽度充能 ---------- */
+  if (!('IntersectionObserver' in window)) {
+    // 极旧浏览器兜底：全部直接显示
+    Array.prototype.forEach.call(document.querySelectorAll('.reveal'), function(el){
+      el.classList.add('on');
+    });
+  } else {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); }
+      });
+    }, { threshold: .22 });
+    document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+  }
+
+  /* ---------- 5 · 系统日志实时流：随机追加生活日志 ---------- */
+  (function live(){
+    var ul = document.getElementById('logList');
+    if (!ul) return;
+    var LINES = [
+      '模块状态同步完成 ........ OK',
+      '夜间构建结束：0 error / 0 warning',
+      '收到用户来信：喜欢「拾光」的 Tri-X 400 预设',
+      '全量备份完成——所有文字已写入本地磁盘',
+      '咖啡豆余量 42%，建议补货',
+      '午后电台新增样本：运河汽笛 ×3',
+      '杭州今日有雨，适合在家洗胶卷',
+      '「岛读」TestFlight 新增 128 位测试者',
+      '整理旧地图收藏：新入手 1949 年杭州市区图',
+      '徒步笔记同步：北高峰环线 8.4km'
+    ];
+    function push(){
+      var li = document.createElement('li');
+      li.className = 'live';
+      var t = document.createElement('time');
+      t.textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+      var b = document.createElement('div');
+      b.className = 'log-body';
+      b.textContent = '> ' + LINES[Math.floor(Math.random() * LINES.length)];
+      li.appendChild(t); li.appendChild(b);
+      ul.appendChild(li);
+      while (ul.children.length > 10) ul.removeChild(ul.firstChild); // 只保留最近 10 条
+    }
+    setTimeout(push, 3000);
+    setInterval(push, 5200);
+  })();
+
+})();
+</script>
+</body>
+</html>

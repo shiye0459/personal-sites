@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>林川 · 个人网站展览馆 — 10 种风格</title>
+<style>
+  :root {
+    --bg: #0e0e0f;
+    --paper: #f4efe6;
+    --ink: #1a1a1a;
+    --muted: #8a8478;
+    --line: #2a2a2c;
+    --accent: #e4572e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--paper);
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+  }
+
+  /* ---- 顶部标题 ---- */
+  header {
+    padding: 96px 24px 48px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  header .eyebrow {
+    font-size: 13px;
+    letter-spacing: 0.35em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  header h1 {
+    font-size: clamp(2.4rem, 7vw, 5rem);
+    font-weight: 900;
+    line-height: 1.15;
+    letter-spacing: 0.02em;
+  }
+  header h1 .accent { color: var(--accent); }
+  header p {
+    margin-top: 20px;
+    max-width: 560px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  /* ---- 目录条目 ---- */
+  main { max-width: 1100px; margin: 0 auto; padding: 0 24px 120px; }
+
+  .entry {
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    align-items: baseline;
+    gap: 24px;
+    padding: 28px 8px;
+    border-top: 1px solid var(--line);
+    text-decoration: none;
+    color: inherit;
+    transition: padding 0.25s ease, background 0.25s ease;
+    position: relative;
+  }
+  .entry:last-of-type { border-bottom: 1px solid var(--line); }
+
+  .entry .num {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 15px;
+    color: var(--muted);
+    transition: color 0.25s;
+  }
+  .entry .name {
+    font-size: clamp(1.2rem, 3.4vw, 2rem);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+  .entry .desc {
+    margin-top: 6px;
+    font-size: 13.5px;
+    color: var(--muted);
+    max-width: 520px;
+  }
+  .entry .arrow {
+    font-size: 22px;
+    color: var(--muted);
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.25s ease;
+  }
+
+  .entry:hover {
+    background: var(--paper);
+    color: var(--ink);
+    padding-left: 24px;
+  }
+  .entry:hover .num { color: var(--accent); }
+  .entry:hover .desc { color: #6b655a; }
+  .entry:hover .arrow { opacity: 1; transform: translateX(0); color: var(--accent); }
+
+  /* ---- 页脚 ---- */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 40px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+    color: var(--muted);
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  @media (max-width: 640px) {
+    .entry { grid-template-columns: 48px 1fr; }
+    .entry .arrow { display: none; }
+    header { padding-top: 64px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Exhibition · 个人网站 × 10 种风格</div>
+  <h1>林川的<br>个人网站<span class="accent">展览馆</span></h1>
+  <p>同一个虚构人物「林川」——独立开发者 / 胶片摄影师，用 10 种截然不同的设计语言呈现。每种风格从布局骨架、交互模型到视觉语言都完全不同，不是换皮。点击任意条目在新窗口打开。</p>
+</header>
+
+<main>
+  <a class="entry" href="01-terminal.html" target="_blank">
+    <span class="num">01</span>
+    <span>
+      <span class="name">CRT 复古终端</span>
+      <div class="desc">80 年代绿磷光终端机 —— 用命令行敲 help / about / projects 浏览网站，扫描线 + 荧光光晕 + boot 日志</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="entry" href="02-brutalism.html" target="_blank">
+    <span class="num">02</span>
+    <span>
+      <span class="name">新粗野主义</span>
+      <div class="desc">粗黑边框、硬阴影、撞色海报拼贴 —— 元素重叠旋转、跑马灯大字、按钮有真实按下手感</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="entry" href="03-editorial.html" target="_blank">
+    <span class="num">03</span>
+    <span>
+      <span class="name">杂志编辑风</span>
+      <div class="desc">「川流」杂志创刊号 —— 刊头、目录带页码、首字下沉、专题报道式项目介绍</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="entry" href="04-pixel.html" target="_blank">
+    <span class="num">04</span>
+    <span>
+      <span class="name">像素游戏风</span>
+      <div class="desc">FC/GBA 游戏界面 —— 键盘上下键选菜单、回车进场景、RPG 对话框、8-bit 音效</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="entry" href="05-3dtilt.html" target="_blank">
+    <span class="num">05</span>
+    <span>
+      <span class="name">3D 视差沉浸</span>
+      <div class="desc">鼠标驱动的空间层次 —— 多层视差、卡片 3D 倾斜、景深模糊、滚动速度差</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="entry" href="06-doodle.html" target="_blank">
+    <span class="num">06</span>
+    <span>
+      <span class="name">手绘涂鸦手账</span>
+      <div class="desc">横线笔记本 + 便签贴纸 —— 手写体、旋转便签、红章印章（点击可以盖章）、胶带装饰</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="entry" href="07-swiss.html" target="_blank">
+    <span class="num">07</span>
+    <span>
+      <span class="name">瑞士国际主义</span>
+      <div class="desc">黑白红印刷海报 —— 严格网格、巨字标题、大数字索引、hover 显示网格参考线</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="entry" href="08-cyber.html" target="_blank">
+    <span class="num">08</span>
+    <span>
+      <span class="name">暗黑赛博 HUD</span>
+      <div class="desc">霓虹系统界面 —— Canvas 粒子网随鼠标扰动、毛玻璃面板、HUD 角标、扫描光卡片</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="entry" href="09-newspaper.html" target="_blank">
+    <span class="num">09</span>
+    <span>
+      <span class="name">复古报纸风</span>
+      <div class="desc">泛黄旧报「林川日报」—— 多栏新闻排版、项目写成新闻体、旧照片效果、分类小广告</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="entry" href="10-gallery.html" target="_blank">
+    <span class="num">10</span>
+    <span>
+      <span class="name">极简画廊</span>
+      <div class="desc">全屏滚动叙事 —— 超大描边字、IntersectionObserver 揭幕动画、底部跑马灯</div>
+    </span>
+    <span class="arrow">→</span>
+  </a>
+</main>
+
+<footer>
+  <span>PERSONAL-SITES · 单文件 HTML，零依赖，双击即可打开</span>
+  <span>虚构人物「林川」· 内容可替换</span>
+</footer>
+
+</body>
+</html>
