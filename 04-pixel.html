@@ -605,7 +605,7 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
               <div class="stat"><span class="k">篮球</span><div class="bar px-thin"><i style="--w:80%;--c:#a7f070"></i></div><span class="v">Lv.80</span></div>
               <p class="sub-h">— 兴趣 TRAITS —</p>
               <div class="traits">
-                <span class="chip">胶片摄影 Lv.87</span>
+                <span class="chip">三角洲猛攻 Lv.87</span>
                 <span class="chip">徒步 Lv.75</span>
                 <span class="chip">煮面条 Lv.82</span>
                 <span class="chip">收集旧地图 Lv.70</span>
@@ -750,6 +750,93 @@ const GLYPH_Q = [
   '..######.##.',
   '.........##.',
 ];
+
+/* ============================================================
+   16x16 同伙像素小人（3 男 1 女，发型/发色/上衣各不相同）
+   ============================================================ */
+/* 胖哥（男）：军师，戴眼镜，深棕发，金色上衣 */
+const MATE_PANG = [
+  '................',
+  '.....HHHHHH.....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHSSSSHH....',
+  '....HSSSSSSH....',
+  '....HGESSEGH....',
+  '....HSSMMSSH....',
+  '....HSSSSSSH....',
+  '.....SSSSSS.....',
+  '....YYYYYYYY....',
+  '...YYYYYYYYYY...',
+  '...SYYYYYYYYS...',
+  '....PPPPPPPP....',
+];
+const MATE_PANG_PAL = { H: '#3b2f2a', S: '#ffcd75', E: '#1a1c2c', M: '#1a1c2c', G: '#73eff7', Y: '#e0a92e', P: '#333c57' };
+
+/* 叶霸（女）：两侧长发垂肩，红棕发，红色上衣 */
+const MATE_YE = [
+  '................',
+  '.....HHHHHH.....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHSSSSHH....',
+  '....HSSSSSSH....',
+  '....HSESSESH....',
+  '....HSSMMSSH....',
+  '....HSSSSSSH....',
+  '...HHSSSSSSHH...',
+  '...HHSSSSSSHH...',
+  '...HHTTTTTTTTHH.',
+  '...HSTTTTTTTTSH.',
+  '....PPPPPPPP....',
+];
+const MATE_YE_PAL = { H: '#7a3b2e', S: '#ffcd75', E: '#1a1c2c', M: '#1a1c2c', T: '#b13e53', P: '#333c57' };
+
+/* 小施（男）：灰发灰衣，存在感低 */
+const MATE_SHI = [
+  '................',
+  '.....HHHHHH.....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHSSSSHH....',
+  '....HSSSSSSH....',
+  '....HSESSESH....',
+  '....HSSMMSSH....',
+  '....HSSSSSSH....',
+  '.....SSSSSS.....',
+  '....TTTTTTTT....',
+  '...TTTTTTTTTT...',
+  '...STTTTTTTTS...',
+  '....PPPPPPPP....',
+];
+const MATE_SHI_PAL = { H: '#8a94a6', S: '#ffcd75', E: '#1a1c2c', M: '#1a1c2c', T: '#566c86', P: '#333c57' };
+
+/* 庞新（男）：新人，刺猬头两撮翘发，绿色上衣 */
+const MATE_PANGXIN = [
+  '....H....H......',
+  '.....HHHHHH.....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHHHHHHH....',
+  '....HHSSSSHH....',
+  '....HSSSSSSH....',
+  '....HSESSESH....',
+  '....HSSMMSSH....',
+  '....HSSSSSSH....',
+  '.....SSSSSS.....',
+  '....TTTTTTTT....',
+  '...TTTTTTTTTT...',
+  '...STTTTTTTTS...',
+  '....PPPPPPPP....',
+];
+const MATE_PANGXIN_PAL = { H: '#29366f', S: '#ffcd75', E: '#1a1c2c', M: '#1a1c2c', T: '#38b764', P: '#333c57' };
 
 /* 8x8 道具图标 */
 const ICON_CAMERA = [
@@ -1070,28 +1157,28 @@ function advanceAbout() {
 const ITEMS = [
   {
     name: '胖哥', en: 'PANGGE', rarity: 'SSR', stars: 3, kind: '胶片相机 App',
-    icon: ICON_CAMERA,
+    icon: MATE_PANG, pal: MATE_PANG_PAL,
     desc: '邱老大的军师，属于二把手，经常与老大在三角洲杀烧掠夺，至今已不知有多少死与他两之手',
     flavor: '「我跟你说，这样是不对的。」',
     stats: '拍照 +12 · 情怀 +99',
   },
   {
     name: '叶霸', en: 'YEBA', rarity: 'SR', stars: 2, kind: 'Markdown 写作工具',
-    icon: ICON_NOTEPAD,
+    icon: MATE_YE, pal: MATE_YE_PAL,
     desc: '陆埠三霸之一，三把手，专门帮老大处理工作上的事。平常跟着老大为威作福。',
     flavor: '「收到，你，去干活吧。」',
     stats: '专注 +15 · 字数 +∞',
   },
   {
     name: '小施', en: 'XIAOSHI', rarity: 'R', stars: 1, kind: '读书笔记 App',
-    icon: ICON_BOOK,
+    icon: MATE_SHI, pal: MATE_SHI_PAL,
     desc: '陆埠三霸之一，虽然是三霸之一，但也是最低的一个，无存在感，只会跟着老大摸鱼',
     flavor: '「摸鱼摸鱼，摸着摸着就习惯了。」',
     stats: '阅读 +10 · 收藏 +30',
   },
   {
     name: '庞新', en: 'PANGXIN', rarity: 'SR', stars: 2, kind: '城市声音网站',
-    icon: ICON_RADIO,
+    icon: MATE_PANGXIN, pal: MATE_PANGXIN_PAL,
     desc: '一个新人，在知道三班的福利后，突破层层关卡成功入职三班，未来可期。',
     flavor: '「努力努力再努力」',
     stats: '治愈 +20 · 采样 +88',
@@ -1115,7 +1202,7 @@ function renderItems() {
       <span class="nm">${it.name}</span>
       <span class="en">${it.en}</span>
       <span class="eq-badge">✦ 已装备</span>`;
-    card.querySelector('.icon').appendChild(pixelEl(it.icon, ICON_PAL, 5));
+    card.querySelector('.icon').appendChild(pixelEl(it.icon, it.pal, 3));  // 16x16 小人按 3px 渲染
     // 移动端兜底：点击聚焦，再点详情区装备按钮
     card.addEventListener('click', () => { ensureAudio(); SFX.move(); setItem(i); });
     grid.appendChild(card);
