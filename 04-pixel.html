@@ -273,7 +273,7 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
 }
 
 /* ============================================================
-   场景四：我的作品 —— 道具栏（像素卡片 + 稀有度标签）
+   场景四：我的同伙 —— partner（像素卡片 + 稀有度标签）
    ============================================================ */
 .items-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
@@ -555,10 +555,10 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
         </div>
       </section>
 
-      <!-- ============ 场景四：我的作品（道具栏） ============ -->
-      <section class="scene" id="scene-items" aria-label="我的作品道具栏">
+      <!-- ============ 场景四：我的同伙（partner） ============ -->
+      <section class="scene" id="scene-items" aria-label="我的同伙partner">
         <div class="scene-inner">
-          <p class="scene-title">我的作品 · 道具栏 <span>INVENTORY</span></p>
+          <p class="scene-title">我的同伙 · partner <span>PARTNER</span></p>
           <div class="items-grid" id="items-grid"><!-- JS 渲染道具卡 --></div>
           <!-- 当前选中道具的详情 -->
           <div class="item-detail px-box">
@@ -932,7 +932,7 @@ const HUD_NAME = {
   title:   '标题画面 · TITLE',
   menu:    '主菜单 · MAIN MENU',
   about:   '关于我 · PROFILE',
-  items:   '道具栏 · INVENTORY',
+  items:   '我的同伙 · PARTNER',
   stats:   '角色属性 · STATUS',
   journal: '冒险日志 · JOURNAL',
   contact: '信笺宝箱 · MAILBOX',
@@ -966,7 +966,7 @@ function goto(name) {
    ============================================================ */
 const MENU = [
   { id: 'about',   zh: '关于我',   en: 'PROFILE', sub: 'RPG 对话 · 认识主角' },
-  { id: 'items',   zh: '我的作品', en: 'WORKS',   sub: '道具栏 · 四个伙伴' },
+  { id: 'items',   zh: '我的同伙', en: 'PARTNER', sub: 'partner · 四个牛马' },
   { id: 'stats',   zh: '技能属性', en: 'SKILLS',  sub: '状态面板 · 加点了吗' },
   { id: 'journal', zh: '经历',     en: 'JOURNAL', sub: '冒险日志 · 主线回顾' },
   { id: 'contact', zh: '联系',     en: 'CONTACT', sub: '信笺宝箱 · 写信给我' },
@@ -1001,11 +1001,11 @@ function setMenu(i) {
    6. 关于我 —— RPG 对话框（逐字打印 + ▼ 继续提示）
    ============================================================ */
 const ABOUT = [
-  '你好，我是林川。白天写代码，晚上拍胶片。',
-  '之前在杭州的一家互联网大厂做了五年前端工程师。2023 年，我辞了职，成为一名独立开发者。',
-  '我相信小而美的产品——做给自己用的工具，写给人看的故事。',
-  '现在我带着四个「伙伴」冒险：拾光、码字、岛读、午后电台。去道具栏看看吧。',
-  '随时按 ESC 回主菜单。祝你在我的世界里玩得开心！',
+  '你好，我是邱，白天上班，晚上猛攻，休息跑顺风。',
+  '2013年入职高速公路，现如今已工作13年，是一位高资历老登，就任陆埠三班集团董事长。',
+  '我相信只要我卷起来，其他人也会跟着卷。',
+  '现在我带个四个[马喽]胖哥、叶霸、小施、庞新。去称霸整个陆埠。',
+  '随时按ESC回主菜单。祝你在我的世界玩的开心！',
 ];
 let aboutPage = 0;
 let typeTimer = null;
@@ -1065,40 +1065,40 @@ function advanceAbout() {
 }
 
 /* ============================================================
-   7. 我的作品 —— 道具栏（像素卡片 + 稀有度 + 装备玩法）
+   7. 我的同伙 —— partner（像素卡片 + 稀有度 + 装备玩法）
    ============================================================ */
 const ITEMS = [
   {
-    name: '拾光', en: 'SHIGUANG', rarity: 'SSR', stars: 3, kind: '胶片相机 App',
+    name: '胖哥', en: 'PANGGE', rarity: 'SSR', stars: 3, kind: '胶片相机 App',
     icon: ICON_CAMERA,
-    desc: '一台装在手机里的胶片相机，模拟 Kodak Portra 400、Fuji Velvia 50 等 12 种经典胶卷的色彩。',
-    flavor: '「按下快门，等它显影三秒。」',
+    desc: '邱老大的军师，属于二把手，经常与老大在三角洲杀烧掠夺，至今已不知有多少死与他两之手',
+    flavor: '「我跟你说，这样是不对的。」',
     stats: '拍照 +12 · 情怀 +99',
   },
   {
-    name: '码字', en: 'MAZI', rarity: 'SR', stars: 2, kind: 'Markdown 写作工具',
+    name: '叶霸', en: 'YEBA', rarity: 'SR', stars: 2, kind: 'Markdown 写作工具',
     icon: ICON_NOTEPAD,
-    desc: '本地优先的 Markdown 写作工具。所有文字都只属于你的硬盘，不联网也能写。',
-    flavor: '「关掉网络，世界就安静了。」',
+    desc: '陆埠三霸之一，三把手，专门帮老大处理工作上的事。平常跟着老大为威作福。',
+    flavor: '「收到，你，去干活吧。」',
     stats: '专注 +15 · 字数 +∞',
   },
   {
-    name: '岛读', en: 'DAODU', rarity: 'R', stars: 1, kind: '读书笔记 App',
+    name: '小施', en: 'XIAOSHI', rarity: 'R', stars: 1, kind: '读书笔记 App',
     icon: ICON_BOOK,
-    desc: '给纸质书做读书笔记的 App：拍下书页，写下想法，让每本书都有一座自己的岛。',
-    flavor: '「每本书都是一座岛。」',
+    desc: '陆埠三霸之一，虽然是三霸之一，但也是最低的一个，无存在感，只会跟着老大摸鱼',
+    flavor: '「摸鱼摸鱼，摸着摸着就习惯了。」',
     stats: '阅读 +10 · 收藏 +30',
   },
   {
-    name: '午后电台', en: 'AFTERNOON RADIO', rarity: 'SR', stars: 2, kind: '城市声音网站',
+    name: '庞新', en: 'PANGXIN', rarity: 'SR', stars: 2, kind: '城市声音网站',
     icon: ICON_RADIO,
-    desc: '一个收集城市声音的网站：西湖的风、河坊街的叫卖、雨打在旧瓦上的声音。',
-    flavor: '「戴上耳机，去城市里散步。」',
+    desc: '一个新人，在知道三班的福利后，突破层层关卡成功入职三班，未来可期。',
+    flavor: '「努力努力再努力」',
     stats: '治愈 +20 · 采样 +88',
   },
 ];
 let itemIndex = 0;
-const equipped = new Set([0]); // 默认装备「拾光」
+const equipped = new Set([0]); // 默认装备「胖哥」
 
 function renderItems() {
   const grid = $('#items-grid');
