@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="林川的个人主页——独立开发者与胶片摄影师，像素游戏风的个人网站。">
-<title>林川 · 个人主页 LIN CHUAN</title>
+<meta name="description" content="邱的个人主页——三班话事人，像素游戏风的个人网站。">
+<title>邱 · 个人主页 QIU</title>
 <!-- 像素小图标 favicon：纯内联 SVG，零外部资源 -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%231a1c2c'/%3E%3Crect x='4' y='2' width='8' height='8' fill='%23ffcd75'/%3E%3Crect x='6' y='5' width='1' height='1' fill='%231a1c2c'/%3E%3Crect x='9' y='5' width='1' height='1' fill='%231a1c2c'/%3E%3Crect x='3' y='10' width='10' height='4' fill='%233b5dc9'/%3E%3C/svg%3E">
 <style>
 /* ============================================================
-   林川 · 像素游戏风个人主页
+   邱 · 像素游戏风个人主页
    骨架 = 游戏机：标题画面 → 主菜单 → 各「场景」
    全部视觉由 CSS 与 box-shadow 点阵实现，零外部依赖
    ============================================================ */
@@ -494,31 +494,31 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
 
 <div class="console">
   <!-- 卡带标签 + 电源灯 -->
-  <div class="console-label"><span class="led"></span>LIN CHUAN'S PIXEL HOMEPAGE<span class="led"></span></div>
+  <div class="console-label"><span class="led"></span>QIU'S PIXEL HOMEPAGE<span class="led"></span></div>
 
   <!-- 游戏机外壳 -->
   <div class="console-frame px-box">
     <!-- 游戏屏幕 -->
     <div class="screen px-box" id="screen">
       <!-- HUD 场景抬头 -->
-      <div class="hud"><span id="hud-name">标题画面</span><span class="hud-r">林川物语 v1.0</span></div>
+      <div class="hud"><span id="hud-name">标题画面</span><span class="hud-r">邱物语 v1.0</span></div>
       <!-- 星空 -->
       <div id="stars" aria-hidden="true"></div>
 
       <!-- ============ 场景一：标题画面 ============ -->
       <section class="scene active" id="scene-title" aria-label="标题画面，按回车开始">
         <div class="scene-inner">
-          <p class="presents">★ LIN CHUAN PRESENTS ★</p>
+          <p class="presents">★ QIU PRESENTS ★</p>
           <div class="title-row">
-            <!-- 「林川」两个大字由 JS 用 box-shadow 点阵逐像素拼出 -->
-            <div id="title-glyphs" aria-label="林川"></div>
+            <!-- 「邱」两个大字由 JS 用 box-shadow 点阵逐像素拼出 -->
+            <div id="title-glyphs" aria-label="邱"></div>
             <!-- 16x16 像素小人 -->
             <div id="title-hero" aria-hidden="true"></div>
           </div>
-          <p class="tagline">白天写代码 · 晚上拍胶片</p>
+          <p class="tagline">白天当牛马 · 晚上当恶霸</p>
           <p class="tagline-en">INDIE DEVELOPER × FILM PHOTOGRAPHER — HANGZHOU</p>
           <p class="press-start" id="press-start">▶ PRESS START ◀</p>
-          <p class="credit">© 2026 LINCHUAN SOFT · MADE IN HANGZHOU</p>
+          <p class="credit">© 2026 QIU SOFT · MADE IN HANGZHOU</p>
         </div>
       </section>
 
@@ -544,7 +544,7 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
             <!-- RPG 对话框：白底黑字 + 逐字打印 + ▼ 继续 -->
             <div class="dialog px-box" id="dialog" role="button" tabindex="0" aria-label="对话，点击继续">
               <div class="nameplate">
-                <span>林川 · Lv.32 独立开发者</span>
+                <span>邱 · Lv.32 三班话事人</span>
                 <span class="page-num" id="about-page-num">1/5</span>
               </div>
               <p class="text"><span id="about-text"></span><span class="caret" id="about-caret">▍</span></p>
@@ -584,15 +584,15 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
               <div class="id-row">
                 <div id="stat-hero" aria-hidden="true"></div>
                 <div>
-                  <p class="id-name">林川 <span>LIN CHUAN · Lv.32</span></p>
-                  <p class="id-job">职业：独立开发者 / 胶片摄影师</p>
-                  <p class="id-loc">所在地：杭州</p>
+                  <p class="id-name">邱 <span>QIU · Lv.32</span></p>
+                  <p class="id-job">职业：三班话事人</p>
+                  <p class="id-loc">所在地：陆埠</p>
                   <p class="id-exp">EXP 1024 / 2048</p>
                 </div>
               </div>
               <div class="hpmp">
-                <div class="hpline"><span class="lbl">HP·写作热情</span><div class="bar px-thin"><i style="--w:100%"></i></div><span class="num">24/24</span></div>
-                <div class="hpline"><span class="lbl">MP·咖啡因</span><div class="bar mp px-thin"><i style="--w:75%"></i></div><span class="num">12/16</span></div>
+                <div class="hpline"><span class="lbl">HP·工作热情</span><div class="bar px-thin"><i style="--w:100%"></i></div><span class="num">24/24</span></div>
+                <div class="hpline"><span class="lbl">MP·绿豆汤</span><div class="bar mp px-thin"><i style="--w:75%"></i></div><span class="num">12/16</span></div>
               </div>
             </div>
             <!-- 右：技能 / 兴趣 / 装备 -->
@@ -602,12 +602,12 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
               <div class="stat"><span class="k">React</span><div class="bar px-thin"><i style="--w:90%;--c:#73eff7"></i></div><span class="v">Lv.90</span></div>
               <div class="stat"><span class="k">SwiftUI</span><div class="bar px-thin"><i style="--w:85%;--c:#ffcd75"></i></div><span class="v">Lv.85</span></div>
               <div class="stat"><span class="k">摄影</span><div class="bar px-thin"><i style="--w:88%;--c:#38b764"></i></div><span class="v">Lv.88</span></div>
-              <div class="stat"><span class="k">写作</span><div class="bar px-thin"><i style="--w:80%;--c:#a7f070"></i></div><span class="v">Lv.80</span></div>
+              <div class="stat"><span class="k">篮球</span><div class="bar px-thin"><i style="--w:80%;--c:#a7f070"></i></div><span class="v">Lv.80</span></div>
               <p class="sub-h">— 兴趣 TRAITS —</p>
               <div class="traits">
                 <span class="chip">胶片摄影 Lv.87</span>
                 <span class="chip">徒步 Lv.75</span>
-                <span class="chip">煮咖啡 Lv.82</span>
+                <span class="chip">煮面条 Lv.82</span>
                 <span class="chip">收集旧地图 Lv.70</span>
               </div>
               <p class="sub-h">— 装备 EQUIPMENT —</p>
@@ -655,7 +655,7 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
     </div>
   </div>
 
-  <p class="foot">白天写代码 · 晚上拍胶片 — A ONE-MAN PIXEL GAME</p>
+  <p class="foot">白天当牛马 · 晚上当恶霸 — A ONE-MAN PIXEL GAME</p>
 </div>
 
 <!-- 触屏虚拟控制栏（仅触屏设备显示：十字键 + B 返回 + A 确认） -->
@@ -692,7 +692,7 @@ const $$ = (s) => Array.from(document.querySelectorAll(s));
    1. 像素点阵数据（字符画 + 调色板）
    ============================================================ */
 
-/* 16x16 像素小人（林川）—— 头像/装饰 */
+/* 16x16 像素小人（邱）—— 头像/装饰 */
 const HERO = [
   '................',
   '.....HHHHHH.....',
@@ -720,35 +720,35 @@ const HERO_PAL = {
   P: '#333c57',   /* 裤子 */
 };
 
-/* 「林」字 12x12 点阵（两个木字旁） */
-const GLYPH_LIN = [
-  '..##....##..',
-  '..##....##..',
-  '..##....##..',
-  '..##....##..',
-  '############',
-  '..##....##..',
-  '..##....##..',
-  '.####..####.',
-  '#.##.##.##.#',
-  '#.##.##.##.#',
-  '#....##....#',
-  '............',
+/* 「邱」字 12x12 点阵（丘 + 右耳刀） */
+const GLYPH_QIU = [
+  '...#........',
+  '...#........',
+  '...#........',
+  '...#..###...',
+  '...#.....##.',
+  '..###..###..',
+  '...#...###..',
+  '...#....#...',
+  '...#....#...',
+  '..###..#....',
+  '...#....#...',
+  '...#....#...',
 ];
-/* 「川」字 12x12 点阵 */
-const GLYPH_CHUAN = [
-  '............',
-  '##.....##.##',
-  '##.....##.##',
-  '.#.....##.##',
-  '.#.....##.##',
-  '.#.....##.##',
-  '.#.....##.##',
-  '.#.....##.##',
-  '.#.....##.##',
-  '.#.....##.##',
-  '.#.....##.##',
-  '............',
+/* 「Q」字母 12x12 点阵（金色，配「邱」字） */
+const GLYPH_Q = [
+  '..#######...',
+  '.##.....##..',
+  '##.......##.',
+  '##.......##.',
+  '##.......##.',
+  '##.......##.',
+  '##.......##.',
+  '##.......##.',
+  '##...##..##.',
+  '.##....###..',
+  '..######.##.',
+  '.........##.',
 ];
 
 /* 8x8 道具图标 */
@@ -1171,14 +1171,14 @@ const CHAPTERS = [
   },
   {
     tag: 'CH.02', years: '2023 – 现在', kind: '主线任务',
-    title: '独立开发者',
+    title: '三班话事人',
     text: '2023 年辞职，一个人成立「工作室」。主攻小而美的产品：做给自己用的工具，写给人看的故事。',
     note: '掉落物：自由、黑眼圈、四个小产品。',
   },
   {
     tag: 'SIDE', years: '进行中', kind: '支线任务',
-    title: '胶片摄影师',
-    text: '背着老相机在城市里捡光影。徒步、煮咖啡、收集旧地图，都是支线里攒下的隐藏道具。',
+    title: '三班话事人',
+    text: '背着老相机在城市里捡光影。徒步、煮面条、收集旧地图，都是支线里攒下的隐藏道具。',
     note: '隐藏道具：37 卷还没冲的胶卷。',
   },
   {
@@ -1220,11 +1220,11 @@ function setJournal(i) {
    10. 联系 —— 信笺宝箱（像素信箱 + 三封信 + 一键复制）
    ============================================================ */
 const MAILS = [
-  { label: '电子邮箱', en: 'E-MAIL', value: 'linchuan@example.com',
-    href: 'mailto:linchuan@example.com', icon: ICON_ENVELOPE },
-  { label: 'GitHub', en: 'CODE', value: 'github.com/linchuan-dev',
-    href: 'https://github.com/linchuan-dev', icon: ICON_CAT },
-  { label: '实体地址', en: 'HOME', value: '杭州 · 西湖区 · 某条开满桂花的巷子',
+  { label: '电子邮箱', en: 'E-MAIL', value: 'qiuqiu@example.com',
+    href: 'mailto:qiuqiu@example.com', icon: ICON_ENVELOPE },
+  { label: 'website', en: 'WEBSITE', value: 'https://ys.mihoyo.com/',
+    href: 'https://ys.mihoyo.com/', icon: ICON_CAT },
+  { label: '实体地址', en: 'HOME', value: '提瓦特 · 某条开满桂花的巷子',
     href: null, icon: ICON_PIN },
 ];
 let mailIndex = 0;
@@ -1299,10 +1299,10 @@ function toast(msg) {
    12. 标题画面
    ============================================================ */
 function renderTitle() {
-  // 「林川」：box-shadow 点阵逐像素拼字
+  // 「邱 + Q」：box-shadow 点阵逐像素拼字
   const glyphs = $('#title-glyphs');
-  glyphs.appendChild(pixelEl(GLYPH_LIN, { '#': '#f4f4f4' }, 6));
-  glyphs.appendChild(pixelEl(GLYPH_CHUAN, { '#': '#ffcd75' }, 6));
+  glyphs.appendChild(pixelEl(GLYPH_QIU, { '#': '#f4f4f4' }, 6));
+  glyphs.appendChild(pixelEl(GLYPH_Q, { '#': '#ffcd75' }, 6));
   // 标题画面上的 16x16 小人
   const hero = pixelEl(HERO, HERO_PAL, 6);
   hero.classList.add('bob');
