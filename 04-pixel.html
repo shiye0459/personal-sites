@@ -441,6 +441,49 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
   .items-grid { gap: 10px; }
 }
 
+/* ---------- 触屏虚拟控制栏（GBA 手感：十字键 + B/A 键，仅触屏设备显示） ---------- */
+.touch-pad { display: none; }
+@media (pointer: coarse) {
+  body { padding-bottom: 170px; }
+  .touch-pad {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 99;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(14, 17, 34, .94);
+    border-top: 3px solid var(--ink);
+    box-shadow: 0 -4px 0 rgba(0, 0, 0, .4);
+  }
+  .dpad {
+    display: grid;
+    grid-template: repeat(3, 42px) / repeat(3, 42px);
+    gap: 3px;
+  }
+  .d-btn {
+    background: #2a3155; color: var(--white);
+    border: 2px solid var(--ink);
+    box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .35), 2px 2px 0 rgba(0, 0, 0, .55);
+    font-size: 14px; line-height: 1; padding: 0;
+    touch-action: manipulation;
+  }
+  .d-btn:active { transform: translate(2px, 2px); box-shadow: inset -2px -2px 0 rgba(0, 0, 0, .3); }
+  .d-up    { grid-area: 1 / 2; }
+  .d-left  { grid-area: 2 / 1; }
+  .d-right { grid-area: 2 / 3; }
+  .d-down  { grid-area: 3 / 2; }
+  .pad-hint { font-size: 11px; color: var(--gray); letter-spacing: .1em; }
+  .ab { display: flex; gap: 16px; align-items: center; }
+  .round-btn {
+    width: 54px; height: 54px; border-radius: 50%;
+    font-size: 18px; font-weight: 700; color: #fff;
+    border: 3px solid var(--ink);
+    box-shadow: inset -4px -4px 0 rgba(0, 0, 0, .35), 3px 3px 0 rgba(0, 0, 0, .55);
+    touch-action: manipulation;
+  }
+  .round-btn:active { transform: translate(2px, 2px); box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .3); }
+  .key-b { background: #b3402e; }   /* B = 返回（对应 ESC） */
+  .key-a { background: #2e9e5b; }   /* A = 确认（对应 ENTER） */
+}
+
 /* 减少动态偏好：停掉所有动画，光标保持可见 */
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; }
@@ -613,6 +656,21 @@ button, .menu-item, .letter, .dialog, .chapter, #press-start { touch-action: man
   </div>
 
   <p class="foot">白天写代码 · 晚上拍胶片 — A ONE-MAN PIXEL GAME</p>
+</div>
+
+<!-- 触屏虚拟控制栏（仅触屏设备显示：十字键 + B 返回 + A 确认） -->
+<div class="touch-pad" id="touch-pad" aria-label="触屏控制栏">
+  <div class="dpad">
+    <button class="d-btn d-up"    data-key="ArrowUp"    aria-label="上">▲</button>
+    <button class="d-btn d-left"  data-key="ArrowLeft"  aria-label="左">◀</button>
+    <button class="d-btn d-right" data-key="ArrowRight" aria-label="右">▶</button>
+    <button class="d-btn d-down"  data-key="ArrowDown"  aria-label="下">▼</button>
+  </div>
+  <div class="pad-hint">B 返回 · A 确认</div>
+  <div class="ab">
+    <button class="round-btn key-b" data-key="Escape" aria-label="返回（B）">B</button>
+    <button class="round-btn key-a" data-key="Enter"  aria-label="确认（A）">A</button>
+  </div>
 </div>
 
 <div class="toast" id="toast" role="status"></div>
@@ -1304,12 +1362,9 @@ function makeStars() {
 
 /* ============================================================
    14. 键盘控制（上下选择 / 回车确认 / ESC 返回）
+   物理键盘与触屏虚拟按键共用同一个 pressKey 入口
    ============================================================ */
-document.addEventListener('keydown', (e) => {
-  const k = e.key;
-  const handled = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape'].includes(k)
-    || k === 'z' || k === 'Z' || k === 'm' || k === 'M';
-  if (handled) e.preventDefault();
+function pressKey(k) {
   ensureAudio();
 
   // 静音开关
@@ -1318,9 +1373,7 @@ document.addEventListener('keydown', (e) => {
     toast(muted ? '音效已关闭' : '音效已开启');
     return;
   }
-  // 确认类按键忽略长按连发
   const isConfirm = k === 'Enter' || k === ' ' || k === 'z' || k === 'Z';
-  if (isConfirm && e.repeat) return;
 
   switch (cur) {
     case 'title':
@@ -1331,6 +1384,7 @@ document.addEventListener('keydown', (e) => {
       if (k === 'ArrowUp')        { SFX.move(); setMenu(menuIndex - 1); }
       else if (k === 'ArrowDown') { SFX.move(); setMenu(menuIndex + 1); }
       else if (isConfirm)         { SFX.confirm(); goto(MENU[menuIndex].id); }
+      else if (k === 'Escape')    { SFX.back(); goto('title'); }  // 触屏 B 键可从菜单返回标题画面
       break;
 
     case 'about':
@@ -1366,7 +1420,33 @@ document.addEventListener('keydown', (e) => {
       else if (k === 'Escape')    { SFX.back(); goto('menu'); }
       break;
   }
+}
+
+document.addEventListener('keydown', (e) => {
+  const k = e.key;
+  const handled = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape'].includes(k)
+    || k === 'z' || k === 'Z' || k === 'm' || k === 'M';
+  if (handled) e.preventDefault();
+  // 确认类按键忽略长按连发
+  const isConfirm = k === 'Enter' || k === ' ' || k === 'z' || k === 'Z';
+  if (isConfirm && e.repeat) return;
+  pressKey(k);
 });
+
+/* ---------- 触屏虚拟控制栏（十字键 + B 返回 + A 确认） ---------- */
+(() => {
+  let lastTap = 0;
+  $$('#touch-pad button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.key;
+      const now = performance.now();
+      // A 键防连点（与物理键盘的 e.repeat 防护对等），方向键/B 键可连点
+      if (k === 'Enter' && now - lastTap < 250) return;
+      lastTap = now;
+      pressKey(k);
+    });
+  });
+})();
 
 /* ---------- 鼠标/触摸兜底 ---------- */
 $('#scene-title').addEventListener('click', startGame);
